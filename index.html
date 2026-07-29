@@ -2394,7 +2394,7 @@ function prPay(){
   var rows='';
   logs.sort(function(a,b){return a.date.localeCompare(b.date);}).forEach(function(l){rows+='<tr><td>'+l.date+'</td><td>'+l.status+'</td><td>'+(l.ti||'-')+'</td><td>'+(l.to||'-')+'</td><td>'+(l.lateMin||0)+'m</td><td>'+(l.utMin||0)+'m</td><td>'+(l.overbreakMin||0)+'m</td><td>'+(l.otMin||0)+'m</td></tr>';});
   var tpl=[
-    '<!DOCTYPE html><html><head><meta charset="UTF-8"/>',
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Pay Slip</title>',
     '<style>body{font-family:Arial,sans-serif;padding:28px;max-width:620px;margin:0 auto}',
     'h1{font-size:20px;font-weight:800;color:#0e285b;text-align:center}',
     '.sub{text-align:center;font-size:12px;color:#6b7280;margin-bottom:14px}',
@@ -5242,7 +5242,7 @@ aT=function(t){
 // ══════════════════════════════════════════
 // ROLE-BASED WORKSTATION — hide dialer for non-dialer depts
 // ══════════════════════════════════════════
-var DIALER_DEPTS=['Agent','Team Leader'];// ══════════════════════════════════════════
+var DIALER_DEPTS=['Agent','Team Leader','IT'];// ══════════════════════════════════════════
 // WORKSTATION VIEW SWITCHER
 // ══════════════════════════════════════════
 var TL_REFRESH_I=null;
@@ -5524,6 +5524,16 @@ function renderITDash(){
   }
 
   el.innerHTML=html;
+}
+
+function itResolveTicket(agentId,ticketId){
+  var key='plhr_tickets_'+agentId;
+  var tickets=JSON.parse(localStorage.getItem(key)||'[]');
+  var t=tickets.find(function(x){return x.id===ticketId;});
+  if(t){t.status='resolved';t.response='Resolved by IT on '+new Date().toLocaleDateString('en-PH');}
+  localStorage.setItem(key,JSON.stringify(tickets));
+  aud('IT resolved ticket #'+ticketId);
+  renderITDash();
 }
 
 // ══════════════════════════════════════════
@@ -7214,7 +7224,7 @@ goWorkstation=function(){
   _origGoWsFinal();
   if(!ST.agent)return;
   var dept=ST.agent.dept;
-  var DIALER_DEPTS=['Agent','Team Leader'];
+  var DIALER_DEPTS=['Agent','Team Leader','IT'];
   var isDialer=DIALER_DEPTS.indexOf(dept)>=0;
 
   // Sidebar features (all roles)
@@ -7749,323 +7759,237 @@ aT = function(tab){
 };
 
 
-function doEA(id){
-  var a=D.agents.find(function(x){return x.id===id;});
-  if(!a)return;
-  var depts=['Agent','Team Leader','Manager','HR','IT','Operations','QA','Finance','Admin'];
-  var h='<div class="card"><div class="ctitle">&#9999; Edit: '+a.name+'</div>'+
-    '<div class="r2"><div class="fg"><label>Full name</label><input id="en" value="'+a.name.replace(/"/g,'&quot;')+'"/></div>'+
-    '<div class="fg"><label>Employee ID</label><input id="eeid" value="'+(a.eid||'').replace(/"/g,'&quot;')+'"/></div></div>'+
-    '<div class="r3"><div class="fg"><label>Department</label><select id="edept">'+
-      depts.map(function(d){return'<option'+(d===a.dept?' selected':'')+'>'+d+'</option>';}).join('')+
-    '</select></div>'+
-    '<div class="fg"><label>Shift start</label><input type="time" id="esh" value="'+(a.shift||'08:00')+'"/></div>'+
-    '<div class="fg"><label>Shift end</label><input type="time" id="eshe" value="'+(a.shiftEnd||CFG.shiftEnd||'17:00')+'"/></div></div>'+
-    '<div class="r3"><div class="fg"><label>Daily rate</label><input type="number" id="er" value="'+a.rate+'" min="0" step="0.01"/></div>'+
-    '<div class="fg"><label>New password <small>(blank=keep)</small></label><input type="password" id="epw" placeholder="Leave blank to keep"/></div>'+
-    '<div class="fg"><label>Date hired</label><input type="date" id="ehi" value="'+(a.hired||'')+'"/></div></div>'+
-    '<div class="r3"><div class="fg"><label>SL</label><input type="number" id="esl" value="'+(a.slBalance||5)+'" min="0"/></div>'+
-    '<div class="fg"><label>VL</label><input type="number" id="evl" value="'+(a.vlBalance||5)+'" min="0"/></div>'+
-    '<div class="fg"><label>EL</label><input type="number" id="eel" value="'+(a.elBalance||3)+'" min="0"/></div></div>'+
-    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
-    '<button class="btn btn-p" style="width:auto;padding:10px 24px" onclick="doSEA('+id+')">&#10003; Save</button>'+
-    '<button class="btn" style="width:auto;padding:10px 16px" id="aedit-cancel-btn">Cancel</button>'+
-    '<span id="eafb"></span></div></div>';
-  var ae=document.getElementById('aedit');
-  if(ae){
-    ae.innerHTML=h;
-    var cb=document.getElementById('aedit-cancel-btn');
-    if(cb)cb.onclick=function(){ae.innerHTML='';};
-    setTimeout(function(){ae.scrollIntoView({behavior:'smooth',block:'nearest'});ae.style.outline='2px solid #3b82f6';setTimeout(function(){ae.style.outline='';},1500);},80);
+function exportData(){
+  var data={agents:D.agents,leads:D.leads,callogs:D.callogs,appts:D.appts,absences:D.absences,logs:D.logs,campaigns:getCampaigns(),cfg:CFG,exported:new Date().toISOString(),version:'ProLink-BPO-v1'};
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='prolink-data-'+new Date().toISOString().split('T')[0]+'.json';a.click();URL.revokeObjectURL(url);
+  aud('Admin exported data');
+}
+function importData(){
+  var inp=document.createElement('input');inp.type='file';inp.accept='.json';
+  inp.onchange=function(e){
+    var file=e.target.files[0];if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      try{
+        var data=JSON.parse(ev.target.result);
+        if(data.version!=='ProLink-BPO-v1'){alert('Invalid file.');return;}
+        if(!confirm('Replace all current data with imported data?'))return;
+        if(data.agents)D.agents=data.agents;if(data.leads)D.leads=data.leads;
+        if(data.callogs)D.callogs=data.callogs;if(data.appts)D.appts=data.appts;
+        if(data.absences)D.absences=data.absences;if(data.logs)D.logs=data.logs;
+        if(data.campaigns)saveCampaigns(data.campaigns);
+        if(data.cfg){CFG=data.cfg;localStorage.setItem('plhr_cfg',JSON.stringify(CFG));}
+        sd();aud('Data imported');
+        alert('Imported! '+( data.agents?data.agents.length:0)+' agents, '+(data.leads?data.leads.length:0)+' leads.');
+        if(typeof rDash==='function')rDash();
+      }catch(err){alert('Error: '+err.message);}
+    };reader.readAsText(file);
+  };inp.click();
+}
+
+// ══ ADMIN — MONITOR + KPI + COMMENTS ══
+var _origATAdmin = aT;
+aT = function(tab){
+  if(tab==='kpi'){
+    document.querySelectorAll('#atabs .tab').forEach(function(b){b.classList.remove('active');});
+    var btn=document.querySelector('#atabs .tab[onclick*="kpi"]');if(btn)btn.classList.add('active');
+    document.getElementById('acont').innerHTML=adminKPI();return;
   }
-}
-
-var IT_CURRENT_DEPT=null;
-var IT_DEPT_CFG=[
-  {name:'Agent',icon:'&#127911;',color:'#1d4ed8',desc:'Call agents & CRM'},
-  {name:'Team Leader',icon:'&#128081;',color:'#7c3aed',desc:'Team monitoring'},
-  {name:'Manager',icon:'&#128200;',color:'#059669',desc:'KPIs & campaigns'},
-  {name:'HR',icon:'&#129333;',color:'#db2777',desc:'Attendance & payroll'},
-  {name:'Operations',icon:'&#9881;',color:'#d97706',desc:'Leads & campaigns'},
-  {name:'QA',icon:'&#9989;',color:'#16a34a',desc:'Call scoring'},
-  {name:'Finance',icon:'&#128176;',color:'#9333ea',desc:'Payroll & commissions'},
-  {name:'Admin',icon:'&#127968;',color:'#475569',desc:'Seats & shifts'}
-];
-
-function itGetOpenTickets(){
-  var all=[];
-  D.agents.forEach(function(a){
-    var t=JSON.parse(localStorage.getItem('plhr_tickets_'+a.id)||'[]');
-    t.forEach(function(tk){if(tk.status!=='resolved')all.push({agent:a,ticket:tk});});
-  });
-  return all;
-}
-
-function itStatCard(val,lbl,color){
-  return '<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:8px;padding:12px;text-align:center">'+
-    '<div style="font-size:22px;font-weight:800;color:'+(color||'#7dd3fc')+'">'+val+'</div>'+
-    '<div style="font-size:9px;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">'+lbl+'</div>'+
-  '</div>';
-}
-
-function itTicketQueue(){
-  var open=itGetOpenTickets();
-  if(!open.length) return '<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:8px;padding:16px;text-align:center;color:#374151;font-size:11px">&#10003; No open tickets</div>';
-  var pc={'Urgent':'#f43f5e','High':'#f87171','Medium':'#fbbf24','Low':'#34d399'};
-  var h='<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:8px;overflow:hidden">';
-  open.forEach(function(item,i){
-    h+='<div style="padding:10px 12px;border-bottom:'+(i<open.length-1?'1px solid #0a1628':'none')+';display:flex;justify-content:space-between;align-items:center">';
-    h+='<div><div style="font-size:11px;font-weight:700;color:#e8eef8">'+item.agent.name+'</div>';
-    h+='<div style="font-size:10px;color:#64748b">'+(item.ticket.type||'')+(item.ticket.desc?' — '+item.ticket.desc:'')+'</div>';
-    h+='<div style="font-size:9px;color:#374151">'+(item.ticket.date||'')+'</div></div>';
-    h+='<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">';
-    h+='<span style="font-size:9px;font-weight:700;color:'+(pc[item.ticket.priority]||'#94a3b8')+'">'+(item.ticket.priority||'')+'</span>';
-    h+='<button data-aid="'+item.agent.id+'" data-tid="'+item.ticket.id+'" onclick="itResolveTicket(parseInt(this.dataset.aid),parseInt(this.dataset.tid))" style="padding:3px 8px;background:#052e16;color:#34d399;border:1px solid #059669;border-radius:4px;font-size:9px;cursor:pointer;font-family:inherit">&#10003; Resolve</button>';
-    h+='</div></div>';
-  });
-  return h+'</div>';
-}
-
-function buildITDash(){
-  if(IT_CURRENT_DEPT) return itDeptView(IT_CURRENT_DEPT);
-  return itHomeView();
-}
-
-function itHomeView(){
-  var today=new Date().toISOString().split('T')[0];
-  var now=new Date().toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  var open=itGetOpenTickets();
-  var online=ATT.filter(function(x){return x.date===today&&x.ti&&!x.to;}).length;
-
-  var h='<div style="height:100%;overflow-y:auto;padding:16px;background:#0b1929">';
-
-  // Header
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
-  h+='<div><div style="font-size:18px;font-weight:800;color:#7dd3fc">&#128187; IT Control Panel</div>';
-  h+='<div style="font-size:11px;color:#475569;margin-top:2px">Monitor departments or access their dashboards</div></div>';
-  h+='<div style="font-family:monospace;font-size:10px;color:#1e3a5f">'+now+'</div></div>';
-
-  // Stats
-  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">';
-  h+=itStatCard(online+'/'+D.agents.length,'Staff Online','#34d399');
-  h+=itStatCard(open.length,'Open Tickets',open.length>0?'#f87171':'#34d399');
-  h+=itStatCard(getCampaigns().length,'Campaigns','#7dd3fc');
-  h+=itStatCard(D.leads.length,'Total Leads','#a78bfa');
-  h+='</div>';
-
-  // Open ticket alert
-  if(open.length){
-    h+='<div style="background:#1c0a0a;border:1px solid #dc2626;border-radius:10px;padding:12px;margin-bottom:16px">';
-    h+='<div style="font-size:11px;font-weight:800;color:#f87171;margin-bottom:8px">&#9888; '+open.length+' Unresolved Ticket'+(open.length>1?'s':'')+'</div>';
-    var pc2={'Urgent':'#f43f5e','High':'#f87171','Medium':'#fbbf24','Low':'#34d399'};
-    open.slice(0,4).forEach(function(item){
-      h+='<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #2c0a0a">';
-      h+='<div><span style="font-weight:700;color:#e8eef8">'+item.agent.name+'</span> <span style="color:#64748b;font-size:10px">'+item.agent.dept+'</span></div>';
-      h+='<span style="font-size:9px;font-weight:700;color:'+(pc2[item.ticket.priority]||'#94a3b8')+'">'+(item.ticket.priority||'')+'</span>';
-      h+='</div>';
-    });
-    if(open.length>4) h+='<div style="font-size:10px;color:#374151;margin-top:4px">+' +(open.length-4)+' more</div>';
-    h+='</div>';
+  if(tab==='comments'){
+    document.querySelectorAll('#atabs .tab').forEach(function(b){b.classList.remove('active');});
+    var btn2=document.querySelector('#atabs .tab[onclick*="comments"]');if(btn2)btn2.classList.add('active');
+    document.getElementById('acont').innerHTML=adminComments();return;
   }
-
-  // DEPT GRID
-  h+='<div style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Department Access</div>';
-  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">';
-  IT_DEPT_CFG.forEach(function(d){
-    var da=D.agents.filter(function(a){return a.dept===d.name;});
-    var dOnline=ATT.filter(function(x){
-      return x.date===today&&x.ti&&!x.to&&da.find(function(a){return a.id===x.agentId;});
-    }).length;
-    var dTickets=open.filter(function(item){return item.agent.dept===d.name;}).length;
-    var alertBadge=dTickets?('<div style="position:absolute;top:-7px;right:-7px;background:#dc2626;color:#fff;border-radius:50%;width:18px;height:18px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #0b1929">'+dTickets+'</div>'):'';
-    h+='<div class="it-dept-btn" data-dept="'+d.name+'" onclick="itSelectDept(this.dataset.dept)" style="border-color:'+(dTickets?'#dc2626;':'#1e3a5f;')+'">';
-    h+=alertBadge;
-    h+='<span class="it-dept-icon">'+d.icon+'</span>';
-    h+='<div class="it-dept-name">'+d.name+'</div>';
-    h+='<div class="it-dept-count" style="margin-bottom:6px">'+d.desc+'</div>';
-    h+='<div style="display:flex;justify-content:center;gap:6px;font-size:10px">';
-    h+='<span style="color:'+d.color+';font-weight:700">'+da.length+' staff</span>';
-    h+='<span style="color:#1e3a5f">&#183;</span>';
-    h+='<span style="color:'+(dOnline>0?'#34d399':'#374151')+'">'+dOnline+' online</span>';
-    h+='</div></div>';
-  });;
-  h+='</div>';
-
-  // IT Ticket Queue
-  h+='<div style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">IT Ticket Queue</div>';
-  h+=itTicketQueue();
-
-  // Send notice
-  h+='<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:10px;padding:14px;margin-top:16px">';
-  h+='<div style="font-size:12px;font-weight:700;color:#7dd3fc;margin-bottom:10px">&#128226; Send System Notice</div>';
-  h+='<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">';
-  h+='<div><label style="font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">To</label>';
-  h+='<select id="it-notice-agent" style="width:100%;padding:7px;background:#081422;color:#e8eef8;border:1px solid #1e3a5f;border-radius:6px;font-size:10px;font-family:inherit">';
-  h+='<option value="">-- All Staff --</option>';
-  D.agents.forEach(function(a){h+='<option value="'+a.id+'|'+a.name+'">'+a.name+' ('+a.dept+')</option>';});
-  h+='</select></div>';
-  h+='<div><label style="font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Message</label>';
-  h+='<input id="it-notice-msg" placeholder="Maintenance, system update..." style="width:100%;padding:7px;background:#081422;color:#e8eef8;border:1px solid #1e3a5f;border-radius:6px;font-size:10px;font-family:inherit"/></div>';
-  h+='<button onclick="itSendNotice()" style="padding:7px 14px;background:#0891b2;color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">&#128228; Send</button>';
-  h+='</div><div id="it-notice-fb" style="font-size:10px;margin-top:5px"></div></div>';
-
-  h+='</div>';
-  return h;
-}
-
-function itDeptView(dept){
-  var cfg=IT_DEPT_CFG.find(function(d){return d.name===dept;})||{icon:'&#127968;',color:'#7dd3fc'};
-  var da=D.agents.filter(function(a){return a.dept===dept;});
-  var today=new Date().toISOString().split('T')[0];
-  var online=ATT.filter(function(x){return x.date===today&&x.ti&&!x.to&&da.find(function(a){return a.id===x.agentId;});}).length;
-
-  var h='<div style="height:100%;overflow-y:auto;background:#0b1929">';
-
-  // Sticky breadcrumb
-  h+='<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#060f1e;border-bottom:1px solid #1e3a5f;position:sticky;top:0;z-index:10;flex-wrap:wrap">';
-  h+='<button onclick="IT_CURRENT_DEPT=null;itRefresh()" style="display:flex;align-items:center;gap:5px;padding:5px 12px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#8592; IT Home</button>';
-  h+='<span style="color:#1e3a5f;font-size:16px">&#8250;</span>';
-  h+='<span style="font-size:14px">'+cfg.icon+'</span>';
-  h+='<span style="font-size:13px;font-weight:800;color:#e8eef8">'+dept+'</span>';
-  h+='<span style="font-size:10px;color:'+cfg.color+'">'+online+'/'+da.length+' online</span>';
-  h+='<div style="margin-left:auto;display:flex;gap:6px">';
-  h+='<button data-dept="'+dept+'" onclick="itSendNoticeToDept(this.dataset.dept)" style="padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:5px;color:#64748b;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">&#128226; Notify</button>';
-  h+='<button onclick="itRefresh()" style="padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:5px;color:#64748b;font-size:10px;cursor:pointer;font-family:inherit">&#8635;</button>';
-  h+='</div></div>';
-
-  // Dept dashboard
-  var dash=_origBuildDeptDash(dept);
-  dash=dash.replace('<div class="dept-wrap"','<div class="dept-wrap" style="height:auto"');
-  h+=dash+'</div>';
-  return h;
-}
-
-function itSelectDept(dept){
-  IT_CURRENT_DEPT=dept;
-  itRefresh();
-}
-
-function itRefresh(){
-  var crm=document.querySelector('.ws-crm');
-  if(crm){crm.style.padding='0';crm.innerHTML=buildITDash();}
-}
-
-function itResolveTicket(agentId,ticketId){
-  var t=JSON.parse(localStorage.getItem('plhr_tickets_'+agentId)||'[]');
-  var tk=t.find(function(x){return x.id===ticketId;});
-  if(tk){tk.status='resolved';tk.resolvedAt=new Date().toISOString();tk.resolvedBy=ST.agent?ST.agent.name:'IT';}
-  localStorage.setItem('plhr_tickets_'+agentId,JSON.stringify(t));
-  aud('IT resolved ticket for agent '+agentId);
-  itRefresh();
-}
-
-function itSendNotice(){
-  var sel=document.getElementById('it-notice-agent');
-  var msg=document.getElementById('it-notice-msg');
-  var fb=document.getElementById('it-notice-fb');
-  if(!msg||!msg.value.trim()){if(fb){fb.textContent='Enter a message.';fb.style.color='#f87171';}return;}
-  var coaching=JSON.parse(localStorage.getItem('plhr_coaching')||'[]');
-  var from=ST.agent?ST.agent.name:'IT';
-  if(sel&&sel.value){
-    var p=sel.value.split('|');
-    coaching.push({id:Date.now(),agentId:parseInt(p[0]),agentName:p[1],message:'[IT] '+msg.value.trim(),from:from,sentAt:new Date().toISOString(),seen:false});
-  }else{
-    D.agents.forEach(function(a){coaching.push({id:Date.now()+a.id,agentId:a.id,agentName:a.name,message:'[IT Broadcast] '+msg.value.trim(),from:from,sentAt:new Date().toISOString(),seen:false});});
+  if(tab==='monitor'){
+    document.querySelectorAll('#atabs .tab').forEach(function(b){b.classList.remove('active');});
+    var btn3=document.querySelector('#atabs .tab[onclick*="monitor"]');if(btn3)btn3.classList.add('active');
+    if(typeof rMonitor==='function')document.getElementById('acont').innerHTML=rMonitor();return;
   }
-  localStorage.setItem('plhr_coaching',JSON.stringify(coaching));
-  aud('IT sent system notice');
-  if(fb){fb.textContent='Sent!';fb.style.color='#34d399';}
-  if(msg)msg.value='';
-}
-
-function itSendNoticeToDept(dept){
-  var msg=prompt('Send notice to all '+dept+' staff:\nEnter message:');
-  if(!msg||!msg.trim())return;
-  var coaching=JSON.parse(localStorage.getItem('plhr_coaching')||'[]');
-  var targets=D.agents.filter(function(a){return a.dept===dept;});
-  var from=ST.agent?ST.agent.name:'IT';
-  targets.forEach(function(a){coaching.push({id:Date.now()+a.id,agentId:a.id,agentName:a.name,message:'[IT \u2192 '+dept+'] '+msg,from:from,sentAt:new Date().toISOString(),seen:false});});
-  localStorage.setItem('plhr_coaching',JSON.stringify(coaching));
-  aud('IT sent dept notice to '+dept);
-  alert('Notice sent to '+targets.length+' '+dept+' staff!');
-}
-
-// Override buildDeptDash for IT dept
-var _origBuildDeptDash=buildDeptDash;
-buildDeptDash=function(dept){
-  if(dept==='IT'){
-    IT_CURRENT_DEPT=null;
-    return '<div class="dept-wrap" id="dept-it" style="height:100%"><div class="dept-body" id="dept-body" style="padding:0;height:100%;overflow:hidden">'+buildITDash()+'</div></div>';
-  }
-  return _origBuildDeptDash(dept);
+  _origATAdmin(tab);
 };
 
-// ══ DATA EXPORT / IMPORT ══
-function exportData(){
-  var data = {
-    agents: D.agents,
-    leads: D.leads,
-    callogs: D.callogs,
-    appts: D.appts,
-    absences: D.absences,
-    logs: D.logs,
-    campaigns: getCampaigns(),
-    cfg: CFG,
-    exported: new Date().toISOString(),
-    version: 'ProLink-BPO-v1'
-  };
-  var json = JSON.stringify(data, null, 2);
-  var blob = new Blob([json], {type:'application/json'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'prolink-data-' + new Date().toISOString().split('T')[0] + '.json';
-  a.click();
-  URL.revokeObjectURL(url);
-  aud('Admin exported system data');
+function adminKPI(){
+  var today=new Date().toISOString().split('T')[0];
+  var weekStart=(function(){var d=new Date();d.setDate(d.getDate()-d.getDay());return d.toISOString().split('T')[0];})();
+  var monthStart=today.slice(0,7)+'-01';
+  function pStats(from){
+    var calls=D.callogs.filter(function(c){return c.date>=from&&c.date<=today;});
+    var appts=calls.filter(function(c){return c.disposition==='Appointment Set';});
+    return{calls:calls.length,appts:appts.length,conv:calls.length>0?Math.round(appts.length/calls.length*100):0};
+  }
+  var td=pStats(today),wk=pStats(weekStart),mo=pStats(monthStart);
+  var h='<div style="padding:16px">';
+  h+='<div style="font-size:18px;font-weight:800;color:#7dd3fc;margin-bottom:16px">&#128200; Company KPIs</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">';
+  function kc(lbl,s){return'<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:10px;padding:16px"><div style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;margin-bottom:12px">'+lbl+'</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center"><div><div style="font-size:24px;font-weight:800;color:#7dd3fc">'+s.calls+'</div><div style="font-size:9px;color:#374151">CALLS</div></div><div><div style="font-size:24px;font-weight:800;color:#34d399">'+s.appts+'</div><div style="font-size:9px;color:#374151">APPTS</div></div><div><div style="font-size:24px;font-weight:800;color:'+(s.conv>=20?'#34d399':s.conv>=10?'#fbbf24':'#f87171')+'">'+s.conv+'%</div><div style="font-size:9px;color:#374151">CONV</div></div></div></div>';}
+  h+=kc('TODAY',td)+kc('THIS WEEK',wk)+kc('THIS MONTH',mo);
+  h+='</div>';
+  var agents=D.agents.filter(function(a){return a.dept==='Agent';});
+  var ranked=agents.map(function(a){
+    var calls=D.callogs.filter(function(c){return c.agentId===a.id&&c.date>=monthStart;});
+    var appts=calls.filter(function(c){return c.disposition==='Appointment Set';}).length;
+    return{name:a.name,calls:calls.length,appts:appts,conv:calls.length>0?Math.round(appts/calls.length*100):0};
+  }).sort(function(a,b){return b.appts-a.appts;});
+  h+='<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:10px;padding:16px;margin-bottom:16px">';
+  h+='<div style="font-size:12px;font-weight:700;color:#7dd3fc;margin-bottom:12px">&#127942; Top Performers This Month</div>';
+  h+='<table class="d-table"><thead><tr><th>#</th><th>Agent</th><th>Calls</th><th>Appts</th><th>Conv</th></tr></thead><tbody>';
+  var medals=['&#127941;','&#129352;','&#129353;'];
+  ranked.slice(0,10).forEach(function(a,i){
+    h+='<tr><td style="color:'+(i<3?'#fbbf24':'#374151')+';font-weight:700">'+(medals[i]||i+1)+'</td>';
+    h+='<td style="font-weight:700;color:#e8eef8">'+a.name+'</td><td style="color:#7dd3fc;text-align:center">'+a.calls+'</td>';
+    h+='<td style="color:#34d399;font-weight:700;text-align:center">'+a.appts+'</td>';
+    h+='<td style="text-align:center;color:'+(a.conv>=20?'#34d399':a.conv>=10?'#fbbf24':'#f87171')+'">'+a.conv+'%</td></tr>';
+  });
+  if(!ranked.length)h+='<tr><td colspan="5" style="text-align:center;color:#374151;padding:12px">No data yet.</td></tr>';
+  h+='</tbody></table></div>';
+  var camps=getCampaigns(),monthStart2=monthStart;
+  h+='<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:10px;padding:16px">';
+  h+='<div style="font-size:12px;font-weight:700;color:#7dd3fc;margin-bottom:12px">&#127937; Campaign Performance</div>';
+  h+='<table class="d-table"><thead><tr><th>Campaign</th><th>Agents</th><th>Calls</th><th>Appts</th><th>Conv</th></tr></thead><tbody>';
+  camps.forEach(function(c){
+    var ca=D.agents.filter(function(a){return a.campaign===c;});
+    var ids=ca.map(function(a){return a.id;});
+    var calls=D.callogs.filter(function(x){return x.date>=monthStart2&&ids.includes(x.agentId);});
+    var appts=calls.filter(function(x){return x.disposition==='Appointment Set';}).length;
+    var conv=calls.length>0?Math.round(appts/calls.length*100):0;
+    h+='<tr><td style="font-weight:700;color:#7dd3fc">'+c+'</td><td style="text-align:center">'+ca.length+'</td>';
+    h+='<td style="text-align:center;color:#7dd3fc">'+calls.length+'</td><td style="text-align:center;color:#34d399;font-weight:700">'+appts+'</td>';
+    h+='<td style="text-align:center;color:'+(conv>=20?'#34d399':conv>=10?'#fbbf24':'#f87171')+'">'+conv+'%</td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+  return h;
 }
 
-function importData(){
-  var inp = document.createElement('input');
-  inp.type = 'file';
-  inp.accept = '.json';
-  inp.onchange = function(e){
-    var file = e.target.files[0];
-    if(!file) return;
-    var reader = new FileReader();
-    reader.onload = function(ev){
-      try{
-        var data = JSON.parse(ev.target.result);
-        if(data.version !== 'ProLink-BPO-v1'){
-          alert('Invalid data file. Please use a ProLink BPO export file.');
-          return;
-        }
-        if(!confirm('This will REPLACE all current data (agents, leads, logs) with the imported data. Are you sure?')) return;
-        
-        if(data.agents) D.agents = data.agents;
-        if(data.leads) D.leads = data.leads;
-        if(data.callogs) D.callogs = data.callogs;
-        if(data.appts) D.appts = data.appts;
-        if(data.absences) D.absences = data.absences;
-        if(data.logs) D.logs = data.logs;
-        if(data.campaigns) saveCampaigns(data.campaigns);
-        if(data.cfg) { CFG = data.cfg; localStorage.setItem('plhr_cfg', JSON.stringify(CFG)); }
-        
-        sd();
-        aud('Admin imported system data from file');
-        alert('✅ Data imported successfully! ' + (data.agents?data.agents.length:0) + ' agents, ' + (data.leads?data.leads.length:0) + ' leads loaded.');
-        
-        // Refresh current view
-        if(typeof rDash === 'function') rDash();
-        if(typeof aT === 'function') aT('dash');
-      } catch(err){
-        alert('Error reading file: ' + err.message);
-      }
-    };
-    reader.readAsText(file);
-  };
-  inp.click();
+function adminComments(){
+  var comments=JSON.parse(localStorage.getItem('plhr_admin_comments')||'[]');
+  var catColors={'General':'#475569','Performance':'#34d399','IT Request':'#0891b2','HR Issue':'#db2777','Campaign':'#d97706','Urgent':'#f43f5e'};
+  var h='<div style="padding:16px">';
+  h+='<div style="font-size:18px;font-weight:800;color:#7dd3fc;margin-bottom:16px">&#128172; Comments &amp; Notes</div>';
+  h+='<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:10px;padding:16px;margin-bottom:16px">';
+  h+='<div style="font-size:12px;font-weight:700;color:#e8eef8;margin-bottom:10px">&#128393; Add Note</div>';
+  h+='<div class="d-fg"><label>Category</label><select id="admin-comment-cat" style="width:100%;padding:8px;background:#081422;color:#e8eef8;border:1px solid #1e3a5f;border-radius:6px;font-size:11px;font-family:inherit"><option>General</option><option>Performance</option><option>IT Request</option><option>HR Issue</option><option>Campaign</option><option>Urgent</option></select></div>';
+  h+='<div class="d-fg"><label>Note</label><textarea id="admin-comment-txt" placeholder="Write your note..." style="width:100%;min-height:80px;padding:8px;background:#081422;color:#e8eef8;border:1px solid #1e3a5f;border-radius:6px;font-family:inherit;font-size:11px;resize:vertical"></textarea></div>';
+  h+='<div style="display:flex;gap:8px"><button onclick="adminPostComment()" style="padding:8px 18px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#128228; Post</button>';
+  h+='<div id="admin-comment-fb" style="font-size:10px;align-self:center"></div></div></div>';
+  if(!comments.length){
+    h+='<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:10px;padding:24px;text-align:center;color:#374151;font-size:11px">No notes yet.</div>';
+  }else{
+    comments.slice().reverse().forEach(function(c){
+      var color=catColors[c.category]||'#475569';
+      h+='<div style="background:#060f1e;border:1px solid #1e3a5f;border-left:3px solid '+color+';border-radius:8px;padding:14px;margin-bottom:8px">';
+      h+='<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
+      h+='<div style="display:flex;align-items:center;gap:8px"><span style="background:'+color+'22;color:'+color+';border:1px solid '+color+';font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px">'+c.category+'</span>';
+      h+='<span style="font-size:11px;font-weight:700;color:#e8eef8">'+c.by+'</span></div>';
+      h+='<div style="display:flex;gap:8px"><span style="font-size:9px;color:#374151">'+c.date+'</span>';
+      h+='<button data-cid="'+c.id+'" onclick="adminDeleteComment(parseInt(this.dataset.cid))" style="background:none;border:none;color:#374151;cursor:pointer">&#10005;</button></div></div>';
+      h+='<div style="font-size:11px;color:#94a3b8;line-height:1.6">'+c.text+'</div></div>';
+    });
+  }
+  h+='</div>';
+  return h;
 }
+
+function adminPostComment(){
+  var cat=document.getElementById('admin-comment-cat');
+  var txt=document.getElementById('admin-comment-txt');
+  var fb=document.getElementById('admin-comment-fb');
+  if(!txt||!txt.value.trim()){if(fb){fb.textContent='Write a note first.';fb.style.color='#f87171';}return;}
+  var comments=JSON.parse(localStorage.getItem('plhr_admin_comments')||'[]');
+  comments.push({id:Date.now(),category:cat?cat.value:'General',text:txt.value.trim(),by:ST.agent?ST.agent.name:'Admin',date:new Date().toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})});
+  localStorage.setItem('plhr_admin_comments',JSON.stringify(comments));
+  if(txt)txt.value='';if(fb){fb.textContent='Posted!';fb.style.color='#34d399';setTimeout(function(){fb.textContent='';},1500);}
+  aud('Admin posted comment');aT('comments');
+}
+
+function adminDeleteComment(id){
+  if(!confirm('Delete this note?'))return;
+  var comments=JSON.parse(localStorage.getItem('plhr_admin_comments')||'[]').filter(function(c){return c.id!==id;});
+  localStorage.setItem('plhr_admin_comments',JSON.stringify(comments));aT('comments');
+}
+
+// Default admin to monitor tab on login
+var _origRDashAdmin=rDash;
+rDash=function(){
+  _origRDashAdmin();
+  var tabs=document.querySelectorAll('#atabs .tab');
+  if(tabs.length<=3){setTimeout(function(){aT('monitor');},100);}
+};
+
+// ══ IT 2-TAB SYSTEM ══
+var IT_ACTIVE_TAB='admin';
+
+function buildITWorkstation(){
+  IT_CURRENT_DEPT=null;
+  var h='<div style="height:100%;display:flex;flex-direction:column;background:#0b1929;overflow:hidden">';
+  h+='<div style="display:flex;background:#060f1e;border-bottom:2px solid #1e3a5f;flex-shrink:0">';
+  h+='<button id="it-tab-admin" onclick="itSwitchTab(this.dataset.t)" data-t="admin" style="padding:12px 20px;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:inherit;transition:all .15s;background:'+(IT_ACTIVE_TAB==='admin'?'#0a1e38':'transparent')+';color:'+(IT_ACTIVE_TAB==='admin'?'#7dd3fc':'#475569')+';border-bottom:2px solid '+(IT_ACTIVE_TAB==='admin'?'#3b82f6':'transparent')+';margin-bottom:-2px">&#128421; Admin Functions</button>';
+  h+='<button id="it-tab-access" onclick="itSwitchTab(this.dataset.t)" data-t="access" style="padding:12px 20px;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:inherit;transition:all .15s;background:'+(IT_ACTIVE_TAB==='access'?'#0a1e38':'transparent')+';color:'+(IT_ACTIVE_TAB==='access'?'#7dd3fc':'#475569')+';border-bottom:2px solid '+(IT_ACTIVE_TAB==='access'?'#3b82f6':'transparent')+';margin-bottom:-2px">&#128187; IT Access</button>';
+  h+='</div>';
+  h+='<div id="it-tab-content" style="flex:1;overflow-y:auto">';
+  h+=(IT_ACTIVE_TAB==='admin'?itAdminPanel():buildITDash());
+  h+='</div></div>';
+  return h;
+}
+
+function itSwitchTab(tab){
+  IT_ACTIVE_TAB=tab;
+  var crm=document.querySelector('.ws-crm');
+  if(crm){crm.style.padding='0';crm.innerHTML=buildITWorkstation();}
+}
+
+function itAdminPanel(){
+  var itTabs=[
+    {id:'dash',label:'&#128200; Dashboard'},{id:'agents',label:'&#128101; Agents'},
+    {id:'log',label:'&#128197; Log'},{id:'attrec',label:'&#9989; Attendance'},
+    {id:'records',label:'&#128203; Records'},{id:'payroll',label:'&#128176; Payroll'},
+    {id:'disputes',label:'&#128226; Requests'},{id:'settings',label:'&#9881; Settings'},
+    {id:'crm',label:'&#127922; CRM'},{id:'monitor',label:'&#128247; Monitor'},
+  ];
+  var h='<div>';
+  h+='<div style="display:flex;flex-wrap:wrap;background:#081422;border-bottom:1px solid #1e3a5f;overflow-x:auto">';
+  itTabs.forEach(function(t){
+    h+='<button data-itab="'+t.id+'" onclick="itAdminTab(this,this.dataset.itab)" style="padding:9px 14px;font-size:10px;font-weight:700;border:none;background:transparent;color:#475569;cursor:pointer;font-family:inherit;white-space:nowrap;border-bottom:2px solid transparent;transition:all .15s">'+t.label+'</button>';
+  });
+  h+='</div>';
+  h+='<div id="it-admin-content" style="padding:16px"><div style="color:#475569;text-align:center;padding:30px;font-size:11px">&#128073; Select a tab above to manage</div></div>';
+  h+='</div>';
+  return h;
+}
+
+function itAdminTab(btn,tab){
+  document.querySelectorAll('[data-itab]').forEach(function(b){b.style.color='#475569';b.style.borderBottomColor='transparent';b.style.background='transparent';});
+  btn.style.color='#7dd3fc';btn.style.borderBottomColor='#3b82f6';btn.style.background='#0a1628';
+  var el=document.getElementById('it-admin-content');
+  if(!el)return;
+  var map={
+    'dash':function(){return typeof rDash==='function'?'<div class="card">'+document.getElementById('acont').innerHTML+'</div>':adminKPI();},
+    'agents':function(){return typeof rAgents==='function'?rAgents():'';},
+    'log':function(){return typeof rLog==='function'?rLog():'';},
+    'attrec':function(){return typeof rAttRec==='function'?rAttRec():'';},
+    'records':function(){return typeof rRec==='function'?rRec():'';},
+    'payroll':function(){return typeof rPay==='function'?rPay():'';},
+    'disputes':function(){return(typeof rSABS==='function'?rSABS():'')+(typeof rDisp==='function'?rDisp():'');},
+    'settings':function(){return typeof rSet==='function'?rSet():'';},
+    'crm':function(){return typeof rAdminCRM==='function'?rAdminCRM():'';},
+    'monitor':function(){return typeof rMonitor==='function'?rMonitor():'';},
+  };
+  try{
+    el.innerHTML=map[tab]?map[tab]():'<div style="color:#374151;padding:20px;text-align:center">Loading...</div>';
+    if(tab==='agents'){var al=document.getElementById('alist');if(al&&typeof rAL==='function')al.innerHTML=rAL();}
+  }catch(e){el.innerHTML='<div style="color:#f87171;padding:12px">Error: '+e.message+'</div>';}
+}
+
+// Override buildDeptDash for IT
+var _origBDDIT=buildDeptDash;
+buildDeptDash=function(dept){
+  if(dept==='IT'){
+    IT_ACTIVE_TAB='admin';IT_CURRENT_DEPT=null;
+    return '<div class="dept-wrap" id="dept-it" style="height:100%;overflow:hidden"><div class="dept-body" id="dept-body" style="padding:0;height:100%;overflow:hidden">'+buildITWorkstation()+'</div></div>';
+  }
+  return _origBDDIT(dept);
+};
 </script>
 
 <!-- ════ WORKSTATION SCREEN ════ -->
