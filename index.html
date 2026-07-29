@@ -7990,6 +7990,136 @@ buildDeptDash=function(dept){
   }
   return _origBDDIT(dept);
 };
+
+// ══════════════════════════════════════════
+// SESSION PERSISTENCE — survive page refresh
+// ══════════════════════════════════════════
+var SESSION_KEY = 'plhr_session';
+
+function saveSession(){
+  if(!ST.agent) return;
+  var session = {
+    agentId: ST.agent.id,
+    dept: ST.agent.dept,
+    clockIn: ST.clockIn ? ST.clockIn.toISOString() : null,
+    campaign: ST.campaign || '',
+    screen: getCurrentScreen(),
+    savedAt: new Date().toISOString()
+  };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+function getCurrentScreen(){
+  var screens = ['s-login','s-al','s-setup','s-active','s-ty','s-admin','s-self','s-ws'];
+  for(var i=0;i<screens.length;i++){
+    var el = document.getElementById(screens[i]);
+    if(el && el.classList.contains('active')) return screens[i];
+  }
+  return 's-login';
+}
+
+function clearSession(){
+  localStorage.removeItem(SESSION_KEY);
+}
+
+function restoreSession(){
+  var raw = localStorage.getItem(SESSION_KEY);
+  if(!raw) return false;
+  try{
+    var session = JSON.parse(raw);
+    if(!session.agentId) return false;
+
+    // Check session is not older than 12 hours
+    var savedAt = new Date(session.savedAt);
+    var now = new Date();
+    var hours = (now - savedAt) / 3600000;
+    if(hours > 12){
+      clearSession();
+      return false;
+    }
+
+    // Find the agent
+    var agent = D.agents.find(function(a){ return a.id === session.agentId; });
+    if(!agent) return false;
+
+    // Restore ST
+    ST.agent = agent;
+    ST.campaign = session.campaign || '';
+    if(session.clockIn) ST.clockIn = new Date(session.clockIn);
+
+    // Restore screen
+    var screen = session.screen || 's-login';
+
+    if(screen === 's-admin'){
+      // Restore admin session
+      entAdmin();
+      return true;
+    }
+
+    if(screen === 's-ws'){
+      // Restore workstation
+      stShift();
+      return true;
+    }
+
+    if(screen === 's-self'){
+      stShift();
+      setTimeout(function(){ openSSPanel(); }, 300);
+      return true;
+    }
+
+    return false;
+  } catch(e){
+    clearSession();
+    return false;
+  }
+}
+
+// Save session whenever state changes
+var _origStShift = stShift;
+stShift = function(){
+  _origStShift();
+  setTimeout(saveSession, 500);
+};
+
+var _origEntAdmin = entAdmin;
+entAdmin = function(){
+  _origEntAdmin();
+  if(ST.agent){
+    setTimeout(saveSession, 500);
+  }
+};
+
+// Clear session on logout
+var _origDoLOSession = doLO;
+doLO = function(){
+  clearSession();
+  _origDoLOSession();
+};
+
+var _origWsConfLOSession = wsConfLO;
+wsConfLO = function(){
+  clearSession();
+  _origWsConfLOSession();
+};
+
+// Auto-save session every 30 seconds
+setInterval(function(){
+  if(ST.agent) saveSession();
+}, 30000);
+
+// Restore session on page load
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    if(!ST.agent){
+      var restored = restoreSession();
+      if(!restored){
+        // Show login screen normally
+        ss('s-login');
+      }
+    }
+  }, 200);
+});
 </script>
 
 <!-- ════ WORKSTATION SCREEN ════ -->
