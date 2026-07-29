@@ -5242,7 +5242,7 @@ aT=function(t){
 // ══════════════════════════════════════════
 // ROLE-BASED WORKSTATION — hide dialer for non-dialer depts
 // ══════════════════════════════════════════
-var DIALER_DEPTS=['Agent','Team Leader','IT'];// ══════════════════════════════════════════
+var DIALER_DEPTS=['Agent','Team Leader'];// ══════════════════════════════════════════
 // WORKSTATION VIEW SWITCHER
 // ══════════════════════════════════════════
 var TL_REFRESH_I=null;
@@ -7224,7 +7224,7 @@ goWorkstation=function(){
   _origGoWsFinal();
   if(!ST.agent)return;
   var dept=ST.agent.dept;
-  var DIALER_DEPTS=['Agent','Team Leader','IT'];
+  var DIALER_DEPTS=['Agent','Team Leader'];
   var isDialer=DIALER_DEPTS.indexOf(dept)>=0;
 
   // Sidebar features (all roles)
