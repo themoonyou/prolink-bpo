@@ -2072,14 +2072,20 @@ function updDB(){var el=document.getElementById('dbadge');if(!el)return;var n=D.
 // ── SHIFT ──
 function stShift(){
   ST.clockIn=new Date();ST.breaks=[];ST.curBk=null;ST.otMode=null;ST.otEnd=null;
-  document.getElementById('shav').textContent=ini(ST.agent.name);
-  document.getElementById('shn').textContent=ST.agent.name;
-  document.getElementById('shd').textContent=ST.agent.dept;
-  document.getElementById('tcs').textContent='Started at '+nowt();
-  ['first','bio','lunch','last'].forEach(function(t){var b=document.getElementById('bb-'+t);b.disabled=false;b.classList.remove('used','on');b.querySelector('.bd').textContent=BKCFG[t].min+(t==='bio'?' min · unlimited':' minutes');});
-  document.getElementById('bkcard').classList.remove('show');
-  document.getElementById('bklog').style.display='none';
-  document.getElementById('bklrows').innerHTML='';
+  var isIT = ST.agent && ST.agent.dept==='IT';
+  var shav=document.getElementById('shav');if(shav)shav.textContent=ini(ST.agent.name);
+  var shn=document.getElementById('shn');if(shn)shn.textContent=ST.agent.name;
+  var shd=document.getElementById('shd');if(shd)shd.textContent=ST.agent.dept;
+  var tcs=document.getElementById('tcs');if(tcs)tcs.textContent='Started at '+nowt();
+  if(!isIT){
+    ['first','bio','lunch','last'].forEach(function(t){
+      var b=document.getElementById('bb-'+t);
+      if(b){b.disabled=false;b.classList.remove('used','on');var bd=b.querySelector('.bd');if(bd)bd.textContent=BKCFG[t].min+(t==='bio'?' min · unlimited':' minutes');}
+    });
+    var bkc=document.getElementById('bkcard');if(bkc)bkc.classList.remove('show');
+    var bkl=document.getElementById('bklog');if(bkl)bkl.style.display='none';
+    var bkr=document.getElementById('bklrows');if(bkr)bkr.innerHTML='';
+  }
   setSt('du');clPop();ss('s-ws');
   if(tickI)clearInterval(tickI);tickI=setInterval(tick,1000);
   setTimeout(goWorkstation,80);
@@ -8411,6 +8417,87 @@ function adminMonitorAgent(agentId){
   panel.innerHTML = h;
   panel.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
+
+// ══ IT SYSTEM MANAGEMENT PANEL ══
+function itOpenManage(){
+  var overlay=document.getElementById('it-manage-overlay');
+  if(!overlay){
+    overlay=document.createElement('div');
+    overlay.id='it-manage-overlay';
+    overlay.style.cssText='position:fixed;inset:0;background:#0b1929;z-index:1500;display:flex;flex-direction:column;overflow:hidden';
+    document.body.appendChild(overlay);
+  }
+  var itTabs=[
+    {id:'agents',  label:'&#128101; Agents'},
+    {id:'log',     label:'&#128197; Log'},
+    {id:'attrec',  label:'&#9989; Attendance'},
+    {id:'records', label:'&#128203; Records'},
+    {id:'payroll', label:'&#128176; Payroll'},
+    {id:'disputes',label:'&#128226; Requests'},
+    {id:'settings',label:'&#9881; Settings'},
+    {id:'crm',     label:'&#127922; CRM'},
+    {id:'monitor', label:'&#128247; Monitor'},
+  ];
+  var tabBar='<div style="display:flex;align-items:center;background:#060f1e;border-bottom:2px solid #1e3a5f;flex-shrink:0;overflow-x:auto">';
+  tabBar+='<button onclick="itCloseManage()" style="padding:12px 16px;background:#1c0a0a;color:#f87171;border:none;cursor:pointer;font-family:inherit;font-size:18px;flex-shrink:0;border-right:1px solid #1e3a5f">&#10005;</button>';
+  tabBar+='<div style="font-size:12px;font-weight:800;color:#7dd3fc;padding:0 16px;flex-shrink:0;white-space:nowrap">&#9881;&#65039; System Management</div>';
+  itTabs.forEach(function(t){
+    tabBar+='<button data-itab="'+t.id+'" onclick="itManageTab(this,this.dataset.itab)" style="padding:11px 14px;font-size:10px;font-weight:700;border:none;background:transparent;color:#475569;cursor:pointer;font-family:inherit;white-space:nowrap;border-bottom:2px solid transparent;flex-shrink:0">'+t.label+'</button>';
+  });
+  tabBar+='</div>';
+  overlay.innerHTML=tabBar+'<div id="it-manage-content" style="flex:1;overflow-y:auto;padding:16px"><div style="text-align:center;padding:40px;color:#475569;font-size:12px">&#128073; Select a tab above to manage</div></div>';
+}
+
+function itCloseManage(){
+  var overlay=document.getElementById('it-manage-overlay');
+  if(overlay)overlay.remove();
+}
+
+function itManageTab(btn,tab){
+  document.querySelectorAll('[data-itab]').forEach(function(b){
+    b.style.color='#475569';b.style.borderBottomColor='transparent';b.style.background='transparent';
+  });
+  btn.style.color='#7dd3fc';btn.style.borderBottomColor='#3b82f6';btn.style.background='#0a1628';
+  var el=document.getElementById('it-manage-content');
+  if(!el)return;
+  var map={
+    'agents':  function(){return typeof rAgents==='function'?rAgents():'';},
+    'log':     function(){return typeof rLog==='function'?rLog():'';},
+    'attrec':  function(){return typeof rAttRec==='function'?rAttRec():'';},
+    'records': function(){return typeof rRec==='function'?rRec():'';},
+    'payroll': function(){return typeof rPay==='function'?rPay():'';},
+    'disputes':function(){return (typeof rSABS==='function'?rSABS():'')+(typeof rDisp==='function'?rDisp():'');},
+    'settings':function(){return typeof rSet==='function'?rSet():'';},
+    'crm':     function(){return typeof rAdminCRM==='function'?rAdminCRM():'';},
+    'monitor': function(){return typeof rMonitor==='function'?rMonitor():(typeof adminMonitorGrid==='function'?adminMonitorGrid():'');},
+  };
+  try{
+    el.innerHTML=map[tab]?map[tab]():'<div style="color:#374151;padding:20px;text-align:center">Loading...</div>';
+    if(tab==='agents'){var al=document.getElementById('alist');if(al&&typeof rAL==='function')al.innerHTML=rAL();}
+  }catch(e){
+    el.innerHTML='<div style="color:#f87171;padding:16px">Error loading: '+e.message+'</div>';
+  }
+}
+
+// ══ FIX BREAK BLEED BETWEEN SESSIONS ══
+// Reset ALL break/dialer DOM state on new login
+var _origStShiftBreak=stShift;
+stShift=function(){
+  // Reset dialer state
+  var dialBtn=document.getElementById('btn-dial');
+  var hangBtn=document.getElementById('btn-hangup');
+  var calBar=document.getElementById('cal-bar');
+  if(dialBtn)dialBtn.style.display='';
+  if(hangBtn)hangBtn.style.display='none';
+  if(calBar)calBar.classList.remove('show');
+  // Reset call timer
+  if(typeof callTimerI!=='undefined'&&callTimerI){clearInterval(callTimerI);callTimerI=null;}
+  callStartTime=null;
+  // Reset dialer number
+  var dialNum=document.getElementById('dial-num');
+  if(dialNum)dialNum.value='';
+  _origStShiftBreak();
+};
 </script>
 
 <!-- ════ WORKSTATION SCREEN ════ -->
