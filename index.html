@@ -1499,8 +1499,8 @@ select option{background:#0f1f33;color:#e8eef8}
   .ws-left{position:fixed !important;left:-300px !important;top:0;width:280px !important;height:100vh !important;z-index:300 !important;transition:left .25s ease !important}
   .ws-left.mobile-open{left:0 !important}
   .ws-right{flex:1;width:100% !important;overflow:hidden}
-  .ws-right-inner{display:flex !important;flex-direction:column !important;grid-template-columns:none !important}
-  .ws-crm{flex:1;overflow-y:auto;border-right:none !important}
+  /* ws-right-inner flex override removed */
+  .ws-crm{overflow-y:auto;border-right:1px solid #1e3a5f}
   .ws-dialer{display:none}
   #ai-panel{display:none !important}
   .dept-nav{overflow-x:auto}
@@ -7801,115 +7801,6 @@ function buildITDash(){
   return itHomeView();
 }
 
-function itHomeView(){
-  var today=new Date().toISOString().split('T')[0];
-  var now=new Date().toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  var open=itGetOpenTickets();
-  var online=ATT.filter(function(x){return x.date===today&&x.ti&&!x.to;}).length;
-
-  var h='<div style="height:100%;overflow-y:auto;padding:16px;background:#0b1929">';
-
-  // Header
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
-  h+='<div><div style="font-size:18px;font-weight:800;color:#7dd3fc">&#128187; IT Control Panel</div>';
-  h+='<div style="font-size:11px;color:#475569;margin-top:2px">Monitor departments or access their dashboards</div></div>';
-  h+='<div style="font-family:monospace;font-size:10px;color:#1e3a5f">'+now+'</div></div>';
-
-  // Stats
-  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">';
-  h+=itStatCard(online+'/'+D.agents.length,'Staff Online','#34d399');
-  h+=itStatCard(open.length,'Open Tickets',open.length>0?'#f87171':'#34d399');
-  h+=itStatCard(getCampaigns().length,'Campaigns','#7dd3fc');
-  h+=itStatCard(D.leads.length,'Total Leads','#a78bfa');
-  h+='</div>';
-
-  // Open ticket alert
-  if(open.length){
-    h+='<div style="background:#1c0a0a;border:1px solid #dc2626;border-radius:10px;padding:12px;margin-bottom:16px">';
-    h+='<div style="font-size:11px;font-weight:800;color:#f87171;margin-bottom:8px">&#9888; '+open.length+' Unresolved Ticket'+(open.length>1?'s':'')+'</div>';
-    var pc2={'Urgent':'#f43f5e','High':'#f87171','Medium':'#fbbf24','Low':'#34d399'};
-    open.slice(0,4).forEach(function(item){
-      h+='<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #2c0a0a">';
-      h+='<div><span style="font-weight:700;color:#e8eef8">'+item.agent.name+'</span> <span style="color:#64748b;font-size:10px">'+item.agent.dept+'</span></div>';
-      h+='<span style="font-size:9px;font-weight:700;color:'+(pc2[item.ticket.priority]||'#94a3b8')+'">'+(item.ticket.priority||'')+'</span>';
-      h+='</div>';
-    });
-    if(open.length>4) h+='<div style="font-size:10px;color:#374151;margin-top:4px">+' +(open.length-4)+' more</div>';
-    h+='</div>';
-  }
-
-  // DEPT GRID
-  h+='<div style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Department Access</div>';
-  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">';
-  IT_DEPT_CFG.forEach(function(d){
-    var da=D.agents.filter(function(a){return a.dept===d.name;});
-    var dOnline=ATT.filter(function(x){
-      return x.date===today&&x.ti&&!x.to&&da.find(function(a){return a.id===x.agentId;});
-    }).length;
-    var dTickets=open.filter(function(item){return item.agent.dept===d.name;}).length;
-    var alertBadge=dTickets?('<div style="position:absolute;top:-7px;right:-7px;background:#dc2626;color:#fff;border-radius:50%;width:18px;height:18px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #0b1929">'+dTickets+'</div>'):'';
-    h+='<div class="it-dept-btn" data-dept="'+d.name+'" onclick="itSelectDept(this.dataset.dept)" style="border-color:'+(dTickets?'#dc2626;':'#1e3a5f;')+'">';
-    h+=alertBadge;
-    h+='<span class="it-dept-icon">'+d.icon+'</span>';
-    h+='<div class="it-dept-name">'+d.name+'</div>';
-    h+='<div class="it-dept-count" style="margin-bottom:6px">'+d.desc+'</div>';
-    h+='<div style="display:flex;justify-content:center;gap:6px;font-size:10px">';
-    h+='<span style="color:'+d.color+';font-weight:700">'+da.length+' staff</span>';
-    h+='<span style="color:#1e3a5f">&#183;</span>';
-    h+='<span style="color:'+(dOnline>0?'#34d399':'#374151')+'">'+dOnline+' online</span>';
-    h+='</div></div>';
-  });;
-  h+='</div>';
-
-  // IT Ticket Queue
-  h+='<div style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">IT Ticket Queue</div>';
-  h+=itTicketQueue();
-
-  // Send notice
-  h+='<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:10px;padding:14px;margin-top:16px">';
-  h+='<div style="font-size:12px;font-weight:700;color:#7dd3fc;margin-bottom:10px">&#128226; Send System Notice</div>';
-  h+='<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">';
-  h+='<div><label style="font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">To</label>';
-  h+='<select id="it-notice-agent" style="width:100%;padding:7px;background:#081422;color:#e8eef8;border:1px solid #1e3a5f;border-radius:6px;font-size:10px;font-family:inherit">';
-  h+='<option value="">-- All Staff --</option>';
-  D.agents.forEach(function(a){h+='<option value="'+a.id+'|'+a.name+'">'+a.name+' ('+a.dept+')</option>';});
-  h+='</select></div>';
-  h+='<div><label style="font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Message</label>';
-  h+='<input id="it-notice-msg" placeholder="Maintenance, system update..." style="width:100%;padding:7px;background:#081422;color:#e8eef8;border:1px solid #1e3a5f;border-radius:6px;font-size:10px;font-family:inherit"/></div>';
-  h+='<button onclick="itSendNotice()" style="padding:7px 14px;background:#0891b2;color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">&#128228; Send</button>';
-  h+='</div><div id="it-notice-fb" style="font-size:10px;margin-top:5px"></div></div>';
-
-  h+='</div>';
-  return h;
-}
-
-function itDeptView(dept){
-  var cfg=IT_DEPT_CFG.find(function(d){return d.name===dept;})||{icon:'&#127968;',color:'#7dd3fc'};
-  var da=D.agents.filter(function(a){return a.dept===dept;});
-  var today=new Date().toISOString().split('T')[0];
-  var online=ATT.filter(function(x){return x.date===today&&x.ti&&!x.to&&da.find(function(a){return a.id===x.agentId;});}).length;
-
-  var h='<div style="height:100%;overflow-y:auto;background:#0b1929">';
-
-  // Sticky breadcrumb
-  h+='<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#060f1e;border-bottom:1px solid #1e3a5f;position:sticky;top:0;z-index:10;flex-wrap:wrap">';
-  h+='<button onclick="IT_CURRENT_DEPT=null;itRefresh()" style="display:flex;align-items:center;gap:5px;padding:5px 12px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#8592; IT Home</button>';
-  h+='<span style="color:#1e3a5f;font-size:16px">&#8250;</span>';
-  h+='<span style="font-size:14px">'+cfg.icon+'</span>';
-  h+='<span style="font-size:13px;font-weight:800;color:#e8eef8">'+dept+'</span>';
-  h+='<span style="font-size:10px;color:'+cfg.color+'">'+online+'/'+da.length+' online</span>';
-  h+='<div style="margin-left:auto;display:flex;gap:6px">';
-  h+='<button data-dept="'+dept+'" onclick="itSendNoticeToDept(this.dataset.dept)" style="padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:5px;color:#64748b;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">&#128226; Notify</button>';
-  h+='<button onclick="itRefresh()" style="padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:5px;color:#64748b;font-size:10px;cursor:pointer;font-family:inherit">&#8635;</button>';
-  h+='</div></div>';
-
-  // Dept dashboard
-  var dash=_origBuildDeptDash(dept);
-  dash=dash.replace('<div class="dept-wrap"','<div class="dept-wrap" style="height:auto"');
-  h+=dash+'</div>';
-  return h;
-}
-
 function itSelectDept(dept){
   IT_CURRENT_DEPT=dept;
   itRefresh();
@@ -8123,53 +8014,6 @@ aT=function(tab){
   _origATAdmin(tab);
 };
 
-function adminMonitorGrid(){
-  var today=new Date().toISOString().split('T')[0];
-  var depts=[
-    {name:'Agent',icon:'&#127911;',color:'#1d4ed8',desc:'Call agents on the floor'},
-    {name:'Team Leader',icon:'&#128081;',color:'#7c3aed',desc:'Team leads'},
-    {name:'Manager',icon:'&#128200;',color:'#059669',desc:'Operations'},
-    {name:'HR',icon:'&#129333;',color:'#db2777',desc:'People & attendance'},
-    {name:'Operations',icon:'&#9881;',color:'#d97706',desc:'Campaigns & leads'},
-    {name:'QA',icon:'&#9989;',color:'#16a34a',desc:'Quality assurance'},
-    {name:'Finance',icon:'&#128176;',color:'#9333ea',desc:'Payroll'},
-    {name:'IT',icon:'&#128187;',color:'#0891b2',desc:'Systems & support'},
-  ];
-  var allOnline=ATT.filter(function(x){return x.date===today&&x.ti&&!x.to;}).length;
-  var todayCalls=D.callogs.filter(function(c){return c.date===today;}).length;
-  var todayAppts=D.callogs.filter(function(c){return c.date===today&&c.disposition==='Appointment Set';}).length;
-  var conv=todayCalls>0?Math.round(todayAppts/todayCalls*100):0;
-  var h='<div style="padding:16px">';
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
-  h+='<div><div style="font-size:18px;font-weight:800;color:#7dd3fc">&#128200; Prolink BPO Monitor</div>';
-  h+='<div style="font-size:11px;color:#475569;margin-top:2px">Live overview — read only</div></div>';
-  h+='<button onclick="aT(this.dataset.t)" data-t="monitor" style="padding:6px 12px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:10px;cursor:pointer;font-family:inherit">&#8635; Refresh</button></div>';
-  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">';
-  function sc(v,l,c){return '<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:'+(c||'#7dd3fc')+'">'+v+'</div><div style="font-size:9px;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">'+l+'</div></div>';}
-  h+=sc(allOnline+'/'+D.agents.length,'Staff Online','#34d399')+sc(todayCalls,'Calls Today','#7dd3fc')+sc(todayAppts,'Appts Today','#34d399')+sc(conv+'%','Conv Rate',conv>=20?'#34d399':conv>=10?'#fbbf24':'#f87171');
-  h+='</div><div style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Department Status</div>';
-  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">';
-  depts.forEach(function(d){
-    var da=D.agents.filter(function(a){return a.dept===d.name;});
-    var dOnline=ATT.filter(function(x){return x.date===today&&x.ti&&!x.to&&da.find(function(a){return a.id===x.agentId;});}).length;
-    var dCalls=D.callogs.filter(function(c){return c.date===today&&da.find(function(a){return a.id===c.agentId;});}).length;
-    var dAppts=D.callogs.filter(function(c){return c.date===today&&c.disposition==='Appointment Set'&&da.find(function(a){return a.id===c.agentId;});}).length;
-    h+='<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:12px;padding:14px 10px;text-align:center">';
-    h+='<div style="font-size:26px;margin-bottom:5px">'+d.icon+'</div><div style="font-size:11px;font-weight:800;color:#e8eef8;margin-bottom:2px">'+d.name+'</div>';
-    h+='<div style="font-size:8px;color:#374151;margin-bottom:8px">'+d.desc+'</div>';
-    h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;text-align:center">';
-    h+='<div><div style="font-size:13px;font-weight:800;color:'+(dOnline>0?'#34d399':'#374151')+'">'+dOnline+'/'+da.length+'</div><div style="font-size:7px;color:#374151">ONLINE</div></div>';
-    h+='<div><div style="font-size:13px;font-weight:800;color:#7dd3fc">'+dCalls+'</div><div style="font-size:7px;color:#374151">CALLS</div></div>';
-    h+='<div><div style="font-size:13px;font-weight:800;color:#34d399">'+dAppts+'</div><div style="font-size:7px;color:#374151">APPTS</div></div>';
-    h+='</div></div>';
-  });
-  h+='</div><div style="display:flex;gap:10px;flex-wrap:wrap">';
-  h+='<button onclick="aT(this.dataset.t)" data-t="kpi" style="flex:1;padding:11px;background:#060f1e;border:1px solid #1e3a5f;border-radius:8px;color:#7dd3fc;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#128200; View KPIs</button>';
-  h+='<button onclick="aT(this.dataset.t)" data-t="comments" style="flex:1;padding:11px;background:#060f1e;border:1px solid #1e3a5f;border-radius:8px;color:#a78bfa;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#128172; Comments</button>';
-  h+='</div></div>';
-  return h;
-}
-
 function adminKPI(){
   var today=new Date().toISOString().split('T')[0];
   var weekStart=(function(){var d=new Date();d.setDate(d.getDate()-d.getDay());return d.toISOString().split('T')[0];})();
@@ -8254,6 +8098,319 @@ ld=function(){
   }
   return d;
 };
+
+// ══════════════════════════════════════════
+// IT FIXES
+// ══════════════════════════════════════════
+
+// 1. Fix IT dept view - hide calendar, call logs, break state for IT
+var _origGoWsIT = goWorkstation;
+goWorkstation = function(){
+  _origGoWsIT();
+  if(!ST.agent || ST.agent.dept !== 'IT') return;
+  // Hide sidebar elements not needed for IT
+  var miniCal = document.getElementById('mini-cal');
+  if(miniCal) miniCal.style.display = 'none';
+  var clWidget = document.querySelector('.cl-widget');
+  if(clWidget) clWidget.style.display = 'none';
+  var callLogsBtn = document.querySelector('.ws-callogs-btn');
+  if(callLogsBtn) callLogsBtn.style.display = 'none';
+  // Hide break buttons for IT
+  var bkSec = document.querySelector('.bk-sec-lbl');
+  if(bkSec && bkSec.parentElement) bkSec.parentElement.style.display = 'none';
+  ['first','bio','lunch','last'].forEach(function(t){
+    var bb = document.getElementById('bb-'+t);
+    if(bb && bb.parentElement) bb.parentElement.style.display = 'none';
+  });
+  var bkGrid = document.querySelector('.bkgrid');
+  if(bkGrid) bkGrid.style.display = 'none';
+};
+
+// 2. Fix IT dept grid - remove Admin tile, fix Agent/TL dashboards
+var _origItHomeView = itHomeView;
+itHomeView = function(){
+  var h = _origItHomeView();
+  return h;
+};
+
+// Override IT_DEPT_CFG to remove Admin and fix labels
+var IT_DEPT_CFG_FIXED = [
+  {name:'Agent',      icon:'&#127911;', color:'#1d4ed8', desc:'Call agents & CRM'},
+  {name:'Team Leader',icon:'&#128081;', color:'#7c3aed', desc:'Team monitoring'},
+  {name:'Manager',    icon:'&#128200;', color:'#059669', desc:'KPIs & campaigns'},
+  {name:'HR',         icon:'&#129333;', color:'#db2777', desc:'Attendance & payroll'},
+  {name:'Operations', icon:'&#9881;',   color:'#d97706', desc:'Leads & campaigns'},
+  {name:'QA',         icon:'&#9989;',   color:'#16a34a', desc:'Call scoring'},
+  {name:'Finance',    icon:'&#128176;', color:'#9333ea', desc:'Payroll & commissions'},
+];
+
+// Rebuild itHomeView with fixed config and no undo/notify buttons
+function itHomeView(){
+  var today = new Date().toISOString().split('T')[0];
+  var now = new Date().toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  var open = itGetOpenTickets ? itGetOpenTickets() : [];
+  var online = ATT.filter(function(x){return x.date===today&&x.ti&&!x.to;}).length;
+
+  var h = '<div style="height:100%;overflow-y:auto;padding:16px;background:#0b1929">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
+  h += '<div><div style="font-size:18px;font-weight:800;color:#7dd3fc">&#128187; IT Control Panel</div>';
+  h += '<div style="font-size:11px;color:#475569;margin-top:2px">Monitor departments or manage system</div></div>';
+  h += '<div style="display:flex;gap:8px">';
+  h += '<button onclick="itOpenManage()" style="display:flex;align-items:center;gap:6px;padding:9px 16px;background:linear-gradient(135deg,#1d4ed8,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#9881;&#65039; System Management</button>';
+  h += '</div></div>';
+
+  // Stats
+  h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">';
+  function itSC(v,l,c){return '<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:'+(c||'#7dd3fc')+'">'+v+'</div><div style="font-size:9px;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">'+l+'</div></div>';}
+  h += itSC(online+'/'+D.agents.length,'Staff Online','#34d399');
+  h += itSC(open.length,'Open Tickets',open.length>0?'#f87171':'#34d399');
+  h += itSC(typeof getCampaigns==='function'?getCampaigns().length:0,'Campaigns','#7dd3fc');
+  h += itSC(D.leads.length,'Total Leads','#a78bfa');
+  h += '</div>';
+
+  // Dept grid
+  h += '<div style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Department Access</div>';
+  h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">';
+  IT_DEPT_CFG_FIXED.forEach(function(d){
+    var da = D.agents.filter(function(a){return a.dept===d.name;});
+    var dOnline = ATT.filter(function(x){return x.date===today&&x.ti&&!x.to&&da.find(function(a){return a.id===x.agentId;});}).length;
+    var dTickets = open.filter(function(item){return item.agent&&item.agent.dept===d.name;}).length;
+    var borderCol = dTickets ? '#dc2626' : '#1e3a5f';
+    h += '<div data-dept="'+d.name+'" onclick="itSelectDept(this.dataset.dept)" style="background:#060f1e;border:2px solid '+borderCol+';border-radius:12px;padding:16px 10px;text-align:center;cursor:pointer;transition:all .2s;position:relative" onmouseover="this.style.borderColor=\''+d.color+'\';this.style.background=\'#0a1e38\';" onmouseout="this.style.borderColor=\''+borderCol+'\';this.style.background=\'#060f1e\';">';
+    if(dTickets) h += '<div style="position:absolute;top:-7px;right:-7px;background:#dc2626;color:#fff;border-radius:50%;width:18px;height:18px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #0b1929">'+dTickets+'</div>';
+    h += '<div style="font-size:28px;margin-bottom:8px">'+d.icon+'</div>';
+    h += '<div style="font-size:12px;font-weight:800;color:#e8eef8;margin-bottom:3px">'+d.name+'</div>';
+    h += '<div style="font-size:9px;color:#374151;margin-bottom:6px">'+d.desc+'</div>';
+    h += '<div style="display:flex;justify-content:center;gap:6px;font-size:10px">';
+    h += '<span style="color:'+d.color+';font-weight:700">'+da.length+' staff</span>';
+    h += '<span style="color:#1e3a5f">&#183;</span>';
+    h += '<span style="color:'+(dOnline>0?'#34d399':'#374151')+'">'+dOnline+' online</span>';
+    h += '</div></div>';
+  });
+  h += '</div>';
+
+  // Ticket queue
+  if(typeof itTicketQueue === 'function'){
+    h += '<div style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">IT Ticket Queue</div>';
+    h += itTicketQueue();
+  }
+
+  h += '<div style="font-size:9px;color:#1e3a5f;text-align:right;padding:8px 0">'+now+'</div>';
+  h += '</div>';
+  return h;
+}
+
+// 3. Fix itDeptView - back/forward nav, no notify button
+function itDeptView(dept){
+  var cfg = IT_DEPT_CFG_FIXED.find(function(d){return d.name===dept;})||{icon:'&#127968;',color:'#7dd3fc'};
+  var da = D.agents.filter(function(a){return a.dept===dept;});
+  var today = new Date().toISOString().split('T')[0];
+  var online = ATT.filter(function(x){return x.date===today&&x.ti&&!x.to&&da.find(function(a){return a.id===x.agentId;});}).length;
+
+  var allDepts = IT_DEPT_CFG_FIXED.map(function(d){return d.name;});
+  var curIdx = allDepts.indexOf(dept);
+  var prevDept = curIdx > 0 ? allDepts[curIdx-1] : null;
+  var nextDept = curIdx < allDepts.length-1 ? allDepts[curIdx+1] : null;
+
+  var h = '<div style="height:100%;overflow-y:auto;background:#0b1929">';
+  // Breadcrumb with back/forward arrows
+  h += '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#060f1e;border-bottom:1px solid #1e3a5f;position:sticky;top:0;z-index:10;flex-wrap:wrap">';
+  h += '<button onclick="IT_CURRENT_DEPT=null;itRefresh()" style="padding:5px 12px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#8962; Home</button>';
+  // Back arrow
+  if(prevDept){
+    h += '<button data-dept="'+prevDept+'" onclick="itSelectDept(this.dataset.dept)" style="padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:12px;cursor:pointer;font-family:inherit">&#8592;</button>';
+  } else {
+    h += '<button disabled style="padding:5px 10px;background:#060f1e;border:1px solid #0a1628;border-radius:6px;color:#1e3a5f;font-size:12px;cursor:not-allowed;font-family:inherit">&#8592;</button>';
+  }
+  h += '<span style="font-size:16px">'+cfg.icon+'</span>';
+  h += '<span style="font-size:13px;font-weight:800;color:#e8eef8">'+dept+'</span>';
+  h += '<span style="font-size:10px;color:'+cfg.color+'">'+online+'/'+da.length+' online</span>';
+  // Forward arrow
+  if(nextDept){
+    h += '<button data-dept="'+nextDept+'" onclick="itSelectDept(this.dataset.dept)" style="padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:12px;cursor:pointer;font-family:inherit">&#8594;</button>';
+  } else {
+    h += '<button disabled style="padding:5px 10px;background:#060f1e;border:1px solid #0a1628;border-radius:6px;color:#1e3a5f;font-size:12px;cursor:not-allowed;font-family:inherit">&#8594;</button>';
+  }
+  h += '<button onclick="itRefresh()" style="margin-left:auto;padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:5px;color:#64748b;font-size:10px;cursor:pointer;font-family:inherit">&#8635;</button>';
+  h += '</div>';
+
+  // Dept dashboard
+  var dash = typeof _origBuildDeptDash==='function' ? _origBuildDeptDash(dept) : buildDeptDash(dept);
+  h += dash + '</div>';
+  return h;
+}
+
+// ══════════════════════════════════════════
+// ADMIN FIXES - clickable dept boxes with employee monitor
+// ══════════════════════════════════════════
+var ADMIN_MONITOR_DEPTS = ['Agent','Team Leader','Manager','Operations'];
+
+function adminMonitorGrid(){
+  var today = new Date().toISOString().split('T')[0];
+  var allOnline = ATT.filter(function(x){return x.date===today&&x.ti&&!x.to;}).length;
+  var todayCalls = D.callogs.filter(function(c){return c.date===today;}).length;
+  var todayAppts = D.callogs.filter(function(c){return c.date===today&&c.disposition==='Appointment Set';}).length;
+  var conv = todayCalls>0?Math.round(todayAppts/todayCalls*100):0;
+
+  var depts = [
+    {name:'Agent',      icon:'&#127911;', color:'#1d4ed8', desc:'Call agents on the floor'},
+    {name:'Team Leader',icon:'&#128081;', color:'#7c3aed', desc:'Team leads'},
+    {name:'Manager',    icon:'&#128200;', color:'#059669', desc:'Operations management'},
+    {name:'Operations', icon:'&#9881;',   color:'#d97706', desc:'Campaigns & leads'},
+  ];
+
+  var h = '<div style="padding:16px">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
+  h += '<div><div style="font-size:18px;font-weight:800;color:#7dd3fc">&#128200; Prolink BPO Monitor</div>';
+  h += '<div style="font-size:11px;color:#475569;margin-top:2px">Click any department to monitor agents</div></div>';
+  h += '<button onclick="aT(\'monitor\')" style="padding:6px 12px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:10px;cursor:pointer;font-family:inherit">&#8635; Refresh</button></div>';
+
+  // Summary stats
+  h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">';
+  function sc(v,l,c){return '<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:'+(c||'#7dd3fc')+'">'+v+'</div><div style="font-size:9px;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">'+l+'</div></div>';}
+  h += sc(allOnline+'/'+D.agents.length,'Staff Online','#34d399');
+  h += sc(todayCalls,'Calls Today','#7dd3fc');
+  h += sc(todayAppts,'Appts Today','#34d399');
+  h += sc(conv+'%','Conv Rate',conv>=20?'#34d399':conv>=10?'#fbbf24':'#f87171');
+  h += '</div>';
+
+  // Dept grid - clickable
+  h += '<div style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Select Department to Monitor</div>';
+  h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">';
+  depts.forEach(function(d){
+    var da = D.agents.filter(function(a){return a.dept===d.name;});
+    var dOnline = ATT.filter(function(x){return x.date===today&&x.ti&&!x.to&&da.find(function(a){return a.id===x.agentId;});}).length;
+    var dCalls = D.callogs.filter(function(c){return c.date===today&&da.find(function(a){return a.id===c.agentId;});}).length;
+    var dAppts = D.callogs.filter(function(c){return c.date===today&&c.disposition==='Appointment Set'&&da.find(function(a){return a.id===c.agentId;});}).length;
+    h += '<div data-dept="'+d.name+'" onclick="adminSelectDept(this.dataset.dept)" style="background:#060f1e;border:2px solid #1e3a5f;border-radius:12px;padding:16px 10px;text-align:center;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor=\''+d.color+'\';this.style.background=\'#0a1e38\';" onmouseout="this.style.borderColor=\'#1e3a5f\';this.style.background=\'#060f1e\';">';
+    h += '<div style="font-size:28px;margin-bottom:8px">'+d.icon+'</div>';
+    h += '<div style="font-size:12px;font-weight:800;color:#e8eef8;margin-bottom:3px">'+d.name+'</div>';
+    h += '<div style="font-size:9px;color:#374151;margin-bottom:10px">'+d.desc+'</div>';
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center">';
+    h += '<div><div style="font-size:14px;font-weight:800;color:'+(dOnline>0?'#34d399':'#374151')+'">'+dOnline+'/'+da.length+'</div><div style="font-size:7px;color:#374151">ONLINE</div></div>';
+    h += '<div><div style="font-size:14px;font-weight:800;color:#7dd3fc">'+dCalls+'</div><div style="font-size:7px;color:#374151">CALLS</div></div>';
+    h += '<div><div style="font-size:14px;font-weight:800;color:#34d399">'+dAppts+'</div><div style="font-size:7px;color:#374151">APPTS</div></div>';
+    h += '</div></div>';
+  });
+  h += '</div>';
+
+  h += '<div style="display:flex;gap:10px;flex-wrap:wrap">';
+  h += '<button onclick="aT(\'kpi\')" style="flex:1;padding:11px;background:#060f1e;border:1px solid #1e3a5f;border-radius:8px;color:#7dd3fc;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#128200; View KPIs</button>';
+  h += '<button onclick="aT(\'comments\')" style="flex:1;padding:11px;background:#060f1e;border:1px solid #1e3a5f;border-radius:8px;color:#a78bfa;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#128172; Comments</button>';
+  h += '</div>';
+  h += '<div id="admin-dept-panel" style="margin-top:16px"></div>';
+  h += '</div>';
+  return h;
+}
+
+function adminSelectDept(dept){
+  var panel = document.getElementById('admin-dept-panel');
+  if(!panel) return;
+  var today = new Date().toISOString().split('T')[0];
+  var agents = D.agents.filter(function(a){return a.dept===dept;});
+
+  var h = '<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:12px;overflow:hidden">';
+  h += '<div style="padding:12px 16px;background:#081422;border-bottom:1px solid #1e3a5f;display:flex;justify-content:space-between;align-items:center">';
+  h += '<div style="font-size:13px;font-weight:800;color:#e8eef8">'+dept+' — Select Agent to Monitor</div>';
+  h += '<button onclick="document.getElementById(\'admin-dept-panel\').innerHTML=\'\'" style="background:none;border:none;color:#475569;cursor:pointer;font-size:16px">&#10005;</button>';
+  h += '</div>';
+
+  if(!agents.length){
+    h += '<div style="padding:20px;text-align:center;color:#374151;font-size:11px">No agents in this department.</div>';
+  } else {
+    agents.forEach(function(a){
+      var att = ATT.find(function(x){return x.agentId===a.id&&x.date===today;});
+      var isOnline = att&&att.ti&&!att.to;
+      var calls = D.callogs.filter(function(c){return c.agentId===a.id&&c.date===today;});
+      var appts = calls.filter(function(c){return c.disposition==='Appointment Set';}).length;
+      var conv = calls.length>0?Math.round(appts/calls.length*100):0;
+      var initials = a.name.split(' ').map(function(n){return n[0];}).join('').substring(0,2).toUpperCase();
+
+      h += '<div style="padding:12px 16px;border-bottom:1px solid #0a1628;display:flex;align-items:center;gap:12px">';
+      h += '<div style="width:36px;height:36px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+initials+'</div>';
+      h += '<div style="flex:1"><div style="font-size:12px;font-weight:700;color:#e8eef8">'+a.name+'</div>';
+      h += '<div style="font-size:10px;color:'+(isOnline?'#34d399':'#374151')+'">'+(isOnline?'● Online':'○ Offline')+'</div></div>';
+      h += '<div style="display:flex;gap:12px;text-align:center;font-size:10px">';
+      h += '<div><div style="font-weight:700;color:#7dd3fc">'+calls.length+'</div><div style="color:#374151">CALLS</div></div>';
+      h += '<div><div style="font-weight:700;color:#34d399">'+appts+'</div><div style="color:#374151">APPTS</div></div>';
+      h += '<div><div style="font-weight:700;color:'+(conv>=20?'#34d399':conv>=10?'#fbbf24':'#f87171')+'">'+conv+'%</div><div style="color:#374151">CONV</div></div>';
+      h += '</div>';
+      h += '<div style="display:flex;gap:6px;flex-shrink:0">';
+      h += '<button data-agent="'+a.id+'" onclick="adminMonitorAgent(parseInt(this.dataset.agent))" style="padding:6px 12px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">&#128247; Monitor</button>';
+      h += '<button onclick="alert(\'Screen & audio recording coming in Phase 3 — requires server integration.\')" style="padding:6px 12px;background:#0a1628;color:#a78bfa;border:1px solid #7c3aed;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">&#128250; Record</button>';
+      h += '</div></div>';
+    });
+  }
+  h += '</div>';
+  panel.innerHTML = h;
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function adminMonitorAgent(agentId){
+  var agent = D.agents.find(function(a){return a.id===agentId;});
+  if(!agent) return;
+  var today = new Date().toISOString().split('T')[0];
+  var att = ATT.find(function(x){return x.agentId===agentId&&x.date===today;});
+  var isOnline = att&&att.ti&&!att.to;
+  var calls = D.callogs.filter(function(c){return c.agentId===agentId&&c.date===today;});
+  var appts = calls.filter(function(c){return c.disposition==='Appointment Set';}).length;
+  var conv = calls.length>0?Math.round(appts/calls.length*100):0;
+  var lastCall = calls.length ? calls[calls.length-1] : null;
+
+  var panel = document.getElementById('admin-dept-panel');
+  if(!panel) return;
+  var initials = agent.name.split(' ').map(function(n){return n[0];}).join('').substring(0,2).toUpperCase();
+
+  var h = '<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:12px;overflow:hidden">';
+  h += '<div style="padding:12px 16px;background:#081422;border-bottom:1px solid #1e3a5f;display:flex;justify-content:space-between;align-items:center">';
+  h += '<div style="font-size:13px;font-weight:800;color:#e8eef8">&#128247; Monitoring: '+agent.name+'</div>';
+  h += '<div style="display:flex;gap:8px">';
+  h += '<button data-dept="'+agent.dept+'" onclick="adminSelectDept(this.dataset.dept)" style="padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:10px;cursor:pointer;font-family:inherit">&#8592; Back</button>';
+  h += '<button onclick="adminMonitorAgent('+agentId+')" style="padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:10px;cursor:pointer;font-family:inherit">&#8635; Refresh</button>';
+  h += '<button onclick="document.getElementById(\'admin-dept-panel\').innerHTML=\'\'" style="background:none;border:none;color:#475569;cursor:pointer;font-size:16px">&#10005;</button>';
+  h += '</div></div>';
+
+  h += '<div style="padding:16px">';
+  // Agent header
+  h += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px;background:#081422;border-radius:10px">';
+  h += '<div style="width:48px;height:48px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center">'+initials+'</div>';
+  h += '<div><div style="font-size:15px;font-weight:800;color:#e8eef8">'+agent.name+'</div>';
+  h += '<div style="font-size:11px;color:#475569">'+agent.dept+(agent.eid?' · '+agent.eid:'')+'</div>';
+  h += '<div style="font-size:11px;color:'+(isOnline?'#34d399':'#374151')+';margin-top:2px">'+(isOnline?'● Online now':'○ Offline')+'</div></div>';
+  h += '<div style="margin-left:auto"><button onclick="alert(\'Screen & audio recording coming in Phase 3 — requires server integration.\')" style="padding:8px 16px;background:#1c0a2e;color:#a78bfa;border:1px solid #7c3aed;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#128250; Start Recording</button></div>';
+  h += '</div>';
+
+  // KPI cards
+  h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">';
+  function ac(v,l,c){return '<div style="background:#081422;border:1px solid #1e3a5f;border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:'+(c||'#7dd3fc')+'">'+v+'</div><div style="font-size:9px;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-top:2px">'+l+'</div></div>';}
+  h += ac(calls.length,'Calls Today','#7dd3fc');
+  h += ac(appts,'Appts','#34d399');
+  h += ac(conv+'%','Conv Rate',conv>=20?'#34d399':conv>=10?'#fbbf24':'#f87171');
+  var clockedIn = att&&att.ti ? att.ti : '--';
+  h += ac(clockedIn,'Clocked In','#a78bfa');
+  h += '</div>';
+
+  // Call history today
+  h += '<div style="font-size:11px;font-weight:700;color:#7dd3fc;margin-bottom:8px">Call History Today</div>';
+  if(!calls.length){
+    h += '<div style="padding:16px;text-align:center;color:#374151;font-size:11px">No calls yet today.</div>';
+  } else {
+    h += '<table style="width:100%;border-collapse:collapse;font-size:11px">';
+    h += '<thead><tr style="border-bottom:1px solid #1e3a5f"><th style="padding:6px 8px;color:#475569;font-size:9px;text-align:left">Time</th><th style="padding:6px 8px;color:#475569;font-size:9px;text-align:left">Lead</th><th style="padding:6px 8px;color:#475569;font-size:9px;text-align:left">Disposition</th><th style="padding:6px 8px;color:#475569;font-size:9px;text-align:left">Notes</th></tr></thead><tbody>';
+    calls.slice().reverse().slice(0,10).forEach(function(c){
+      var dispColor = c.disposition==='Appointment Set'?'#34d399':c.disposition==='DNC'?'#f87171':'#64748b';
+      h += '<tr style="border-bottom:1px solid #0a1628"><td style="padding:6px 8px;font-family:monospace;color:#475569">'+c.time+'</td>';
+      h += '<td style="padding:6px 8px;font-weight:600;color:#e8eef8">'+(c.leadName||'—')+'</td>';
+      h += '<td style="padding:6px 8px"><span style="color:'+dispColor+';font-weight:700">'+c.disposition+'</span></td>';
+      h += '<td style="padding:6px 8px;color:#64748b;font-size:10px">'+(c.notes||'—')+'</td></tr>';
+    });
+    h += '</tbody></table>';
+  }
+  h += '<div style="font-size:9px;color:#1e3a5f;text-align:right;margin-top:8px">Last updated: '+new Date().toLocaleTimeString('en-PH')+'</div>';
+  h += '</div></div>';
+  panel.innerHTML = h;
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
 </script>
 
 <!-- ════ WORKSTATION SCREEN ════ -->
