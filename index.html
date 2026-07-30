@@ -1768,6 +1768,11 @@ select option{background:#0f1f33;color:#e8eef8}
 /* ══ TRANSFER ALERT (TL side) ══ */
 .transfer-alert{background:#1a0a2e;border:1px solid #7c3aed;border-radius:10px;padding:12px;margin-bottom:8px;animation:pulse-purple 1s infinite alternate}
 @keyframes pulse-purple{from{border-color:#7c3aed}to{border-color:#a78bfa;box-shadow:0 0 12px rgba(124,58,237,.3)}}
+
+/* IT Control Panel - ensure clickable */
+#dept-it { pointer-events: all !important; }
+#dept-it .dept-body { overflow-y: auto !important; pointer-events: all !important; }
+#dept-body { pointer-events: all !important; }
 </style>
 </head>
 <body>
@@ -1958,7 +1963,7 @@ select option{background:#0f1f33;color:#e8eef8}
 
 <script>
 
-// ── DOLLAR PARTICLE TRAIL ──
+// ── DOLLAR PARTICLE
 document.addEventListener('mousemove', function(e) {
   var span = document.createElement('span');
   span.className = 'dollar-particle';
@@ -2340,7 +2345,18 @@ function aPv(){var r=parseFloat(document.getElementById('ar')?.value),pv=documen
 function rAL(){if(!D.agents.length)return'<div class="empty">No staff yet.</div>';return'<table><thead><tr><th>Name</th><th>ID</th><th>Dept</th><th>Shift</th><th>Rate</th><th>Password</th><th>Leaves SL/VL/EL</th><th></th></tr></thead><tbody>'+D.agents.map(function(a){var sl=glb(a.id,'sl'),vl=glb(a.id,'vl'),el=glb(a.id,'el');return'<tr><td><div class="ar"><div class="av">'+ini(a.name)+'</div><strong>'+a.name+'</strong></div></td><td style="font-size:10px;color:var(--gray)">'+(a.eid||'—')+'</td><td>'+dbdg(a.dept)+'</td><td style="font-size:10px;font-family:monospace">'+(a.shift||'—')+' → '+(a.shiftEnd||CFG.shiftEnd)+'</td><td style="font-weight:700;color:var(--navy)">₱'+a.rate.toFixed(2)+'</td><td>'+(a.password?'<span style="color:var(--green);font-size:10px;font-weight:700">✓ Set</span>':'<span style="color:var(--red);font-size:10px">Not set</span>')+'</td><td style="font-size:10px"><span style="color:var(--blue)">SL:'+sl+'</span> / <span style="color:var(--purple)">VL:'+vl+'</span> / <span style="color:#9d174d">EL:'+el+'</span></td><td style="display:flex;gap:4px"><button class="btn btn-a btn-sm" onclick="doEA('+a.id+')">✏ Edit</button><button class="btn btn-r btn-sm" onclick="doDA('+a.id+')">✕</button></td></tr>';}).join('')+'</tbody></table>';}
 function doAA(){var n=document.getElementById('an').value.trim(),eid=document.getElementById('aeid').value.trim(),dept=document.getElementById('adept').value,sh=document.getElementById('ash').value,she=document.getElementById('ashe').value,r=parseFloat(document.getElementById('ar').value),pw=document.getElementById('apw').value,hi=document.getElementById('ahi').value,sl=parseInt(document.getElementById('asl').value)||5,vl=parseInt(document.getElementById('avl').value)||5,el=parseInt(document.getElementById('ael').value)||3;if(!n){sfb('afb','Name required.',false);return;}if(!r||r<=0){sfb('afb','Rate required.',false);return;}if(!pw){sfb('afb','Password required.',false);return;}D.agents.push({id:Date.now(),name:n,eid,dept,shift:sh,shiftEnd:she||CFG.shiftEnd,rate:r,password:pw,hired:hi,slBalance:sl,vlBalance:vl,elBalance:el});sd();aud('Added: '+n);sfb('afb',n+' added!',true);aT('agents');updAH();}
 function doSEA(id){var a=D.agents.find(function(x){return x.id===id;});if(!a)return;a.name=document.getElementById('en').value.trim()||a.name;a.eid=document.getElementById('eeid').value.trim();a.dept=document.getElementById('edept').value;a.shift=document.getElementById('esh').value;a.shiftEnd=document.getElementById('eshe').value||CFG.shiftEnd;a.rate=parseFloat(document.getElementById('er').value)||a.rate;var pw=document.getElementById('epw').value;if(pw)a.password=pw;a.hired=document.getElementById('ehi').value;a.slBalance=parseInt(document.getElementById('esl').value)||5;a.vlBalance=parseInt(document.getElementById('evl').value)||5;a.elBalance=parseInt(document.getElementById('eel').value)||3;sd();aud('Edited: '+a.name);sfb('eafb','Saved!',true);setTimeout(function(){document.getElementById('aedit').innerHTML='';document.getElementById('alist').innerHTML=rAL();},700);}
-function doDA(id){var a=D.agents.find(function(x){return x.id===id;});if(!confirm('Delete '+a.name+'?'))return;D.agents=D.agents.filter(function(x){return x.id!==id;});sd();aud('Deleted: '+a.name);document.getElementById('alist').innerHTML=rAL();updAH();}
+function doDA(id){
+  var a=D.agents.find(function(x){return x.id===id;});
+  if(!a||!confirm('Delete '+a.name+'?'))return;
+  D.agents=D.agents.filter(function(x){return x.id!==id;});
+  sd();aud('Deleted: '+a.name);
+  var al=document.getElementById('alist');
+  if(al)al.innerHTML=rAL();
+  if(typeof updAH==='function')updAH();
+  // If in IT manage panel, refresh
+  var itBtn=document.querySelector('[data-itab="agents"]');
+  if(itBtn&&document.getElementById('it-manage-content'))itManageTab(itBtn,'agents');
+}
 
 // ── LOG ──
 function rLog(){var today=tod(),opts=D.agents.map(function(a){return'<option value="'+a.id+'">'+a.name+' ('+a.dept+')</option>';}).join('');return'<div class="card"><div class="ctitle">Log attendance</div><div class="r2"><div class="fg"><label>Agent</label><select id="lag" onchange="onLag()"><option value="">— Select —</option>'+opts+'</select></div><div class="fg"><label>Date</label><input type="date" id="ldt" value="'+today+'"/></div></div><div id="linfo" style="font-size:10px;color:var(--gray);margin-bottom:6px"></div><div style="background:var(--gray3);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;border:1px solid var(--gray4)"><div style="font-size:10px;font-weight:700;color:var(--gray2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Status &amp; Day Type</div><div class="r3"><div class="fg"><label>Status</label><select id="lst" onchange="onLst()"><option value="present">Present</option><option value="absent">Absent</option><option value="halfday">Half-day</option><option value="sl">Sick Leave</option><option value="vl">Vacation Leave</option><option value="el">Emergency Leave</option></select></div><div class="fg"><label>Day type</label><select id="ldt2"><option value="regular">Regular</option><option value="special">Special Holiday (+30%)</option><option value="restday">Rest Day (+30%)</option><option value="restday_special">RD+Special (+50%)</option></select></div><div class="fg"><label>Time in</label><input type="time" id="lin" oninput="calcL()"/></div></div></div><div id="lpm" style="background:var(--gray3);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;border:1px solid var(--gray4)"><div style="font-size:10px;font-weight:700;color:var(--gray2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Lunch &amp; Overtime</div><div class="r4"><div class="fg"><label>Lunch out</label><input type="time" id="llo" oninput="calcL()"/></div><div class="fg"><label>Lunch in</label><input type="time" id="lli" oninput="calcL()"/></div><div class="fg"><label>Time out</label><input type="time" id="lout" oninput="calcL()"/></div><div class="fg"><label>OT min (manual)</label><input type="number" id="lotm" placeholder="0" min="0" oninput="calcL()"/></div></div><div class="r2"><div class="fg"><label>Undertime (min)</label><input type="number" id="lut" placeholder="0" min="0"/></div><div class="fg"><label>Lunch duration</label><input type="text" id="lldr" readonly placeholder="auto"/></div></div><div id="lobw" style="background:var(--red3);border:1px solid #fca5a5;border-radius:6px;padding:7px 10px;font-size:10px;font-weight:700;color:#991b1b;margin-top:4px;display:none">OB: <span id="lobn">0</span> min over lunch.</div><div id="lotn" style="background:var(--green3);border:1px solid #6ee7b7;border-radius:6px;padding:7px 10px;font-size:10px;font-weight:700;color:#065f46;margin-top:4px;display:none">OT: <span id="lota">0</span> min detected.</div></div><div class="r2"><div class="fg"><label>Commission (₱)</label><input type="number" id="lcomm" placeholder="0" min="0" step="0.01"/></div><div class="fg"><label>Notes</label><input id="lnotes" placeholder="optional"/></div></div><div style="display:flex;align-items:center"><button class="btn btn-p" style="width:auto;padding:10px 20px" onclick="doLog()">Save entry</button><span id="lfb"></span></div></div><div class="card"><div class="ctitle">Today\'s log</div><div id="tlog">'+rTlog()+'</div></div>';}
@@ -7242,6 +7258,21 @@ goWorkstation=function(){
     if(viewTabs)viewTabs.style.display='none';
     var crm=document.querySelector('.ws-crm');
     if(crm){crm.style.padding='0';crm.innerHTML=buildDeptDash(dept);}
+    // IT-specific sidebar cleanup
+    if(dept==='IT'){
+      var miniCal=document.getElementById('mini-cal');if(miniCal)miniCal.style.display='none';
+      var clWidget=document.querySelector('.cl-widget');if(clWidget)clWidget.style.display='none';
+      var bkSec=document.querySelector('.bk-sec-lbl');if(bkSec&&bkSec.parentElement)bkSec.parentElement.style.display='none';
+      var bkGrid=document.querySelector('.bkgrid');if(bkGrid)bkGrid.style.display='none';
+      ['first','bio','lunch','last'].forEach(function(t){var bb=document.getElementById('bb-'+t);if(bb&&bb.parentElement)bb.parentElement.style.display='none';});
+      // Hide My Dashboard, Call Logs, Calendar for IT
+      var myDashBtn=document.querySelector('.btn-self');if(myDashBtn)myDashBtn.style.display='none';
+      var clWidget2=document.querySelector('.ws-callogs-btn');if(clWidget2)clWidget2.style.display='none';
+      var calWrap=document.querySelector('.mini-cal-wrap');if(calWrap)calWrap.style.display='none';
+      var quickLinks=document.querySelector('.quick-links-btn');if(quickLinks)quickLinks.style.display='none';
+      // Hide the dialer view tabs
+      var dialerTab=document.getElementById('ws-view-tabs');if(dialerTab)dialerTab.style.display='none';
+    }
     var deptEl=document.getElementById('ws-dept');
     if(deptEl)deptEl.style.color='#fbbf24';
   }
@@ -7937,45 +7968,11 @@ rDash=function(){
   if(tabs.length<=3){setTimeout(function(){aT('monitor');},150);}
 };
 
-// Seed default IT account (Prolink/1234) if no agents exist
-var _origLdIT=ld;
-ld=function(){
-  var d=_origLdIT();
-  if(!d.agents||!d.agents.length){
-    d.agents=[{id:1,name:'Prolink',dept:'IT',password:'1234',eid:'IT-001',
-      shift:'08:00',shiftEnd:'17:00',rate:500,hired:'',
-      slBalance:5,vlBalance:5,elBalance:3,campaign:'Training'}];
-    localStorage.setItem('plhr_data',JSON.stringify(d));
-  }
-  return d;
-};
-
-// ══════════════════════════════════════════
+// Seed default IT account (Prolink/1234) if no agents exist// ══════════════════════════════════════════
 // IT FIXES
 // ══════════════════════════════════════════
 
-// 1. Fix IT dept view - hide calendar, call logs, break state for IT
-var _origGoWsIT = goWorkstation;
-goWorkstation = function(){
-  _origGoWsIT();
-  if(!ST.agent || ST.agent.dept !== 'IT') return;
-  // Hide sidebar elements not needed for IT
-  var miniCal = document.getElementById('mini-cal');
-  if(miniCal) miniCal.style.display = 'none';
-  var clWidget = document.querySelector('.cl-widget');
-  if(clWidget) clWidget.style.display = 'none';
-  var callLogsBtn = document.querySelector('.ws-callogs-btn');
-  if(callLogsBtn) callLogsBtn.style.display = 'none';
-  // Hide break buttons for IT
-  var bkSec = document.querySelector('.bk-sec-lbl');
-  if(bkSec && bkSec.parentElement) bkSec.parentElement.style.display = 'none';
-  ['first','bio','lunch','last'].forEach(function(t){
-    var bb = document.getElementById('bb-'+t);
-    if(bb && bb.parentElement) bb.parentElement.style.display = 'none';
-  });
-  var bkGrid = document.querySelector('.bkgrid');
-  if(bkGrid) bkGrid.style.display = 'none';
-};
+// 1. Fix IT dept view - hide calendar, call logs, break state for IT;
 
 // 2. Fix IT dept grid - remove Admin tile, fix Agent/TL dashboards
 var _origItHomeView = itHomeView;
@@ -8154,7 +8151,7 @@ function adminMonitorAgent(agentId){
   if(!calls.length){
     h += '<div style="padding:16px;text-align:center;color:#374151;font-size:11px">No calls yet today.</div>';
   } else {
-    h += '<table style="width:100%;border-collapse:collapse;font-size:11px">';
+    h += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px">';
     h += '<thead><tr style="border-bottom:1px solid #1e3a5f"><th style="padding:6px 8px;color:#475569;font-size:9px;text-align:left">Time</th><th style="padding:6px 8px;color:#475569;font-size:9px;text-align:left">Lead</th><th style="padding:6px 8px;color:#475569;font-size:9px;text-align:left">Disposition</th><th style="padding:6px 8px;color:#475569;font-size:9px;text-align:left">Notes</th></tr></thead><tbody>';
     calls.slice().reverse().slice(0,10).forEach(function(c){
       var dispColor = c.disposition==='Appointment Set'?'#34d399':c.disposition==='DNC'?'#f87171':'#64748b';
@@ -8302,55 +8299,159 @@ function itHomeView(){
   h += '<div style="font-size:9px;color:#1e3a5f;text-align:right;padding:8px 0">'+now+'</div>';
   h += '</div>';
   return h;
+}function itDeptView(dept){
+  var cfg=IT_DEPT_CFG_FIXED.find(function(d){return d.name===dept;})||{icon:'&#127968;',color:'#7dd3fc'};
+  var da=D.agents.filter(function(a){return a.dept===dept;});
+  var today=new Date().toISOString().split('T')[0];
+  var allDepts=IT_DEPT_CFG_FIXED.map(function(d){return d.name;});
+  var curIdx=allDepts.indexOf(dept);
+  var prevDept=curIdx>0?allDepts[curIdx-1]:null;
+  var nextDept=curIdx<allDepts.length-1?allDepts[curIdx+1]:null;
+
+  var h='<div style="height:100%;overflow-y:auto;background:#0b1929">';
+  // Sticky nav bar
+  h+='<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#060f1e;border-bottom:1px solid #1e3a5f;position:sticky;top:0;z-index:10;flex-wrap:wrap">';
+  h+='<button onclick="IT_CURRENT_DEPT=null;itRefresh()" style="padding:5px 12px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#8962; IT Home</button>';
+  if(prevDept){
+    h+='<button data-dept="'+prevDept+'" onclick="IT_CURRENT_DEPT=this.dataset.dept;itRefresh()" style="padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:12px;cursor:pointer;font-family:inherit">&#8592;</button>';
+  }else{
+    h+='<button disabled style="padding:5px 10px;background:#060f1e;border:1px solid #0a1628;border-radius:6px;color:#1e3a5f;font-size:12px;cursor:not-allowed">&#8592;</button>';
+  }
+  h+='<span style="font-size:16px">'+cfg.icon+'</span>';
+  h+='<span style="font-size:14px;font-weight:800;color:#e8eef8">'+dept+'</span>';
+  h+='<span style="font-size:10px;color:'+cfg.color+'">'+da.length+' staff</span>';
+  if(nextDept){
+    h+='<button data-dept="'+nextDept+'" onclick="IT_CURRENT_DEPT=this.dataset.dept;itRefresh()" style="padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:12px;cursor:pointer;font-family:inherit">&#8594;</button>';
+  }else{
+    h+='<button disabled style="padding:5px 10px;background:#060f1e;border:1px solid #0a1628;border-radius:6px;color:#1e3a5f;font-size:12px;cursor:not-allowed">&#8594;</button>';
+  }
+  h+='<button data-dept="'+dept+'" onclick="itNavDept(this.dataset.dept)" style="margin-left:auto;padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:5px;color:#64748b;font-size:10px;cursor:pointer;font-family:inherit">&#8635;</button>';
+  h+='</div>';
+
+  h+='<div style="padding:16px">';
+
+  if(!da.length){
+    h+='<div style="text-align:center;padding:40px;color:#374151;font-size:12px">No staff in '+dept+' department yet.<br><br>';
+    h+='<button onclick="itOpenManage()" style="padding:8px 16px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#128101; Add Staff via System Management</button>';
+    h+='</div>';
+  } else {
+    h+='<div style="font-size:11px;font-weight:700;color:#7dd3fc;margin-bottom:12px">Select employee to access remotely:</div>';
+    h+='<div style="display:grid;gap:8px">';
+    da.forEach(function(a){
+      var att=ATT.find(function(x){return x.agentId===a.id&&x.date===today;});
+      var isOnline=att&&att.ti&&!att.to;
+      var isOnBreak=att&&att.bkType;
+      var calls=D.callogs.filter(function(c){return c.agentId===a.id&&c.date===today;});
+      var appts=calls.filter(function(c){return c.disposition==='Appointment Set';}).length;
+      var statusColor=!isOnline?'#374151':isOnBreak?'#fbbf24':'#34d399';
+      var statusLabel=!isOnline?'Offline':isOnBreak?att.bkType+' Break':'Online';
+      var initials=a.name.split(' ').map(function(n){return n[0];}).join('').substring(0,2).toUpperCase();
+
+      h+='<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px">';
+      h+='<div style="width:40px;height:40px;border-radius:50%;background:'+cfg.color+';color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+initials+'</div>';
+      h+='<div style="flex:1;min-width:0">';
+      h+='<div style="font-size:13px;font-weight:700;color:#e8eef8">'+a.name+'</div>';
+      h+='<div style="font-size:10px;color:'+statusColor+';margin-top:2px">&#9679; '+statusLabel+'</div>';
+      h+='<div style="display:flex;gap:12px;margin-top:4px;font-size:10px">';
+      h+='<span style="color:#7dd3fc">'+calls.length+' calls</span>';
+      h+='<span style="color:#34d399">'+appts+' appts</span>';
+      h+='<span style="color:#475569">'+(a.eid||a.campaign||'')+'</span>';
+      h+='</div></div>';
+      h+='<div style="display:flex;gap:6px;flex-shrink:0">';
+      h+='<button data-aid="'+a.id+'" onclick="itViewEmployee(parseInt(this.dataset.aid))" style="padding:7px 14px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">&#128065; View</button>';
+      h+='<button onclick="itOpenManage()" style="padding:7px 12px;background:#0a1628;color:#64748b;border:1px solid #1e3a5f;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">&#9881;</button>';
+      h+='</div></div>';
+    });
+    h+='</div>';
+  }
+  h+='</div></div>';
+  return h;
 }
 
-function itDeptView(dept){
-  var cfg = IT_DEPT_CFG_FIXED.find(function(d){return d.name===dept;})||{icon:'&#127968;',color:'#7dd3fc'};
-  var da = D.agents.filter(function(a){return a.dept===dept;});
-  var today = new Date().toISOString().split('T')[0];
-  var online = ATT.filter(function(x){return x.date===today&&x.ti&&!x.to&&da.find(function(a){return a.id===x.agentId;});}).length;
+function itViewEmployee(agentId){
+  var agent=D.agents.find(function(a){return a.id===agentId;});
+  if(!agent)return;
+  var today=new Date().toISOString().split('T')[0];
+  var att=ATT.find(function(x){return x.agentId===agentId&&x.date===today;});
+  var isOnline=att&&att.ti&&!att.to;
+  var calls=D.callogs.filter(function(c){return c.agentId===agentId&&c.date===today;});
+  var appts=calls.filter(function(c){return c.disposition==='Appointment Set';}).length;
+  var conv=calls.length>0?Math.round(appts/calls.length*100):0;
+  var initials=agent.name.split(' ').map(function(n){return n[0];}).join('').substring(0,2).toUpperCase();
 
-  var allDepts = IT_DEPT_CFG_FIXED.map(function(d){return d.name;});
-  var curIdx = allDepts.indexOf(dept);
-  var prevDept = curIdx > 0 ? allDepts[curIdx-1] : null;
-  var nextDept = curIdx < allDepts.length-1 ? allDepts[curIdx+1] : null;
+  // Find the dept config color
+  var cfg=IT_DEPT_CFG_FIXED.find(function(d){return d.name===agent.dept;})||{color:'#1d4ed8'};
 
-  var h = '<div style="height:100%;overflow-y:auto;background:#0b1929">';
-  // Breadcrumb with back/forward arrows
-  h += '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#060f1e;border-bottom:1px solid #1e3a5f;position:sticky;top:0;z-index:10;flex-wrap:wrap">';
-  h += '<button onclick="IT_CURRENT_DEPT=null;itRefresh()" style="padding:5px 12px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#8962; Home</button>';
-  // Back arrow
-  if(prevDept){
-    h += '<button data-dept="'+prevDept+'" onclick="itSelectDept(this.dataset.dept)" style="padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:12px;cursor:pointer;font-family:inherit">&#8592;</button>';
-  } else {
-    h += '<button disabled style="padding:5px 10px;background:#060f1e;border:1px solid #0a1628;border-radius:6px;color:#1e3a5f;font-size:12px;cursor:not-allowed;font-family:inherit">&#8592;</button>';
+  var target=document.getElementById('dept-body')||document.querySelector('.ws-crm');
+  if(!target)return;
+
+  var h='<div style="height:100%;overflow-y:auto;background:#0b1929">';
+  h+='<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#060f1e;border-bottom:1px solid #1e3a5f;position:sticky;top:0;z-index:10">';
+  h+='<button data-dept="'+agent.dept+'" onclick="itNavDept(this.dataset.dept)" style="padding:5px 12px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#8592; Back</button>';
+  h+='<span style="font-size:13px;font-weight:800;color:#e8eef8">'+agent.name+'</span>';
+  h+='<span style="font-size:10px;color:#475569">'+agent.dept+'</span>';
+  h+='<button data-aid="'+agentId+'" onclick="itViewEmployee(parseInt(this.dataset.aid))" style="margin-left:auto;padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:5px;color:#64748b;font-size:10px;cursor:pointer;font-family:inherit">&#8635;</button>';
+  h+='</div>';
+  h+='<div style="padding:16px">';
+
+  // Agent card
+  h+='<div style="display:flex;align-items:center;gap:14px;padding:16px;background:#060f1e;border:1px solid #1e3a5f;border-radius:12px;margin-bottom:16px">';
+  h+='<div style="width:52px;height:52px;border-radius:50%;background:'+cfg.color+';color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center">'+initials+'</div>';
+  h+='<div><div style="font-size:16px;font-weight:800;color:#e8eef8">'+agent.name+'</div>';
+  h+='<div style="font-size:11px;color:#475569">'+agent.dept+(agent.eid?' · '+agent.eid:'')+(agent.campaign?' · '+agent.campaign:'')+'</div>';
+  h+='<div style="font-size:11px;color:'+(isOnline?'#34d399':'#374151')+';margin-top:3px">'+(isOnline?'&#9679; Online now':'&#9675; Offline')+'</div></div>';
+  h+='<button onclick="itPhase3Alert()" style="margin-left:auto;padding:8px 16px;background:#1c0a2e;color:#a78bfa;border:1px solid #7c3aed;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#128250; Record</button>';
+  h+='</div>';
+
+  // KPI row
+  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">';
+  function kc(v,l,c){return '<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:'+(c||'#7dd3fc')+'">'+v+'</div><div style="font-size:9px;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-top:2px">'+l+'</div></div>';}
+  h+=kc(calls.length,'Calls Today','#7dd3fc');
+  h+=kc(appts,'Appts','#34d399');
+  h+=kc(conv+'%','Conv Rate',conv>=20?'#34d399':conv>=10?'#fbbf24':'#f87171');
+  h+=kc(att&&att.ti?att.ti:'--','Clock In','#a78bfa');
+  h+='</div>';
+
+  // Call history
+  h+='<div style="font-size:11px;font-weight:700;color:#7dd3fc;margin-bottom:8px">&#128222; Call History Today</div>';
+  if(!calls.length){
+    h+='<div style="padding:16px;text-align:center;color:#374151;font-size:11px;background:#060f1e;border-radius:8px">No calls yet today.</div>';
+  }else{
+    h+='<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:8px;overflow:hidden">';
+    h+='<div style="display:grid;grid-template-columns:80px 1fr 140px 1fr;gap:0;padding:7px 12px;background:#081422;font-size:9px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.4px">';
+    h+='<div>Time</div><div>Lead</div><div>Disposition</div><div>Notes</div></div>';
+    calls.slice().reverse().slice(0,15).forEach(function(c){
+      var dc=c.disposition==='Appointment Set'?'#34d399':c.disposition==='DNC'?'#f87171':'#64748b';
+      h+='<div style="display:grid;grid-template-columns:80px 1fr 140px 1fr;gap:0;padding:8px 12px;border-top:1px solid #0a1628;font-size:11px">';
+      h+='<div style="font-family:monospace;color:#475569">'+c.time+'</div>';
+      h+='<div style="font-weight:600;color:#e8eef8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.leadName||'—')+'</div>';
+      h+='<div><span style="color:'+dc+';font-weight:700">'+c.disposition+'</span></div>';
+      h+='<div style="color:#64748b;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.notes||'—')+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
   }
-  h += '<span style="font-size:16px">'+cfg.icon+'</span>';
-  h += '<span style="font-size:13px;font-weight:800;color:#e8eef8">'+dept+'</span>';
-  h += '<span style="font-size:10px;color:'+cfg.color+'">'+online+'/'+da.length+' online</span>';
-  // Forward arrow
-  if(nextDept){
-    h += '<button data-dept="'+nextDept+'" onclick="itSelectDept(this.dataset.dept)" style="padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:12px;cursor:pointer;font-family:inherit">&#8594;</button>';
-  } else {
-    h += '<button disabled style="padding:5px 10px;background:#060f1e;border:1px solid #0a1628;border-radius:6px;color:#1e3a5f;font-size:12px;cursor:not-allowed;font-family:inherit">&#8594;</button>';
-  }
-  h += '<button onclick="itRefresh()" style="margin-left:auto;padding:5px 10px;background:#0a1628;border:1px solid #1e3a5f;border-radius:5px;color:#64748b;font-size:10px;cursor:pointer;font-family:inherit">&#8635;</button>';
-  h += '</div>';
-
-  // Dept dashboard
-  var dash = typeof _origBuildDeptDash==='function' ? _origBuildDeptDash(dept) : buildDeptDash(dept);
-  h += dash + '</div>';
-  return h;
+  h+='</div></div>';
+  target.innerHTML=h;
 }
 
 function itSelectDept(dept){
   IT_CURRENT_DEPT=dept;
-  itRefresh();
+  var target=document.getElementById('dept-body')||document.querySelector('.ws-crm');
+  if(target){
+    target.style.padding='0';
+    target.style.overflow='auto';
+    target.innerHTML=itDeptView(dept);
+  }
 }
 
 function itRefresh(){
-  var crm=document.querySelector('.ws-crm');
-  if(crm){crm.style.padding='0';crm.innerHTML=buildITDash();}
+  var target=document.getElementById('dept-body')||document.querySelector('.ws-crm');
+  if(target){
+    target.style.padding='0';
+    target.style.overflow='auto';
+    target.innerHTML=buildITDash();
+  }
 }
 
 function itOpenManage(){
@@ -8395,7 +8496,6 @@ function itManageTab(btn,tab){
     'tickets': function(){return itRenderTickets();},
     'records': function(){return itRenderRecordings();},
     'settings':function(){return itRenderSettings();},
-    'crm':     function(){return typeof rAdminCRM==='function'?rAdminCRM():'';},
   };
   try{
     el.innerHTML=map[tab]?map[tab]():'<div style="color:#374151;padding:20px;text-align:center">Loading...</div>';
@@ -8722,6 +8822,476 @@ function itPhase3Alert(){alert('Screen and audio recording coming in Phase 3 - r
 
 function itExportData(){if(typeof exportData==='function')exportData();}
 function itImportData(){if(typeof importData==='function')importData();}
+
+
+// ══════════════════════════════════════════
+// LEADGEN SYSTEM
+// ══════════════════════════════════════════
+
+// Default dispositions with ViciDial codes
+var PROLINK_DISPOSITIONS = [
+  {code:'NI',   label:'Not Interested',    color:'#f87171', vici:'NI',   includeLeadGen:false},
+  {code:'NA',   label:'No Answer',         color:'#94a3b8', vici:'NA',   includeLeadGen:true},
+  {code:'VM',   label:'Voicemail',         color:'#64748b', vici:'VM',   includeLeadGen:true},
+  {code:'CB',   label:'Callback',          color:'#3b82f6', vici:'CB',   includeLeadGen:true},
+  {code:'APPT', label:'Appointment Set',   color:'#34d399', vici:'APPT', includeLeadGen:false},
+  {code:'INT',  label:'Interested',        color:'#a78bfa', vici:'INT',  includeLeadGen:true},
+  {code:'DNC',  label:'Do Not Call',       color:'#dc2626', vici:'DNC',  includeLeadGen:false},
+  {code:'WN',   label:'Wrong Number',      color:'#f97316', vici:'WN',   includeLeadGen:false},
+  {code:'SALE', label:'Sale Completed',    color:'#059669', vici:'SALE', includeLeadGen:false},
+  {code:'LB',   label:'Language Barrier',  color:'#d97706', vici:'LB',   includeLeadGen:false},
+  {code:'DISC', label:'Disconnected',      color:'#475569', vici:'DISC', includeLeadGen:false},
+  {code:'PT',   label:'Promise to Think',  color:'#7c3aed', vici:'PT',   includeLeadGen:true},
+  {code:'ANS',  label:'Answered - Bad Time',color:'#f59e0b',vici:'ANS',  includeLeadGen:true},
+];
+
+function getDispositions(){
+  var saved = localStorage.getItem('plhr_dispositions');
+  if(saved) return JSON.parse(saved);
+  return PROLINK_DISPOSITIONS;
+}
+
+function saveDispositions(disps){
+  localStorage.setItem('plhr_dispositions', JSON.stringify(disps));
+}
+
+function getDispoLabel(code){
+  var d = getDispositions().find(function(x){return x.code===code||x.label===code;});
+  return d ? d.label : code;
+}
+
+// ── Update openCall to use dynamic dispositions ──
+var _origOpenCall = openCall;
+openCall = function(leadId, agentId){
+  var l = D.leads.find(function(x){return x.id===leadId;});
+  if(!l) return;
+  var today = new Date().toISOString().split('T')[0];
+  var now = new Date();
+  var nt = p2(now.getHours())+':'+p2(now.getMinutes());
+  var disps = getDispositions();
+  var dispOptions = disps.map(function(d){
+    return '<option value="'+d.label+'">'+d.label+'</option>';
+  }).join('');
+
+  document.getElementById('call-modal').style.display='block';
+  document.getElementById('call-modal').innerHTML=
+    '<div class="card" style="border:2px solid var(--green)">'+
+    '<div class="ctitle"><span>&#128222; Log Call — '+l.name+'</span>'+
+    '<button class="btn btn-sm" onclick="document.getElementById(\'call-modal\').style.display=\'none\'">Close</button></div>'+
+    '<div class="fg"><label>Disposition</label>'+
+    '<select id="cd-disp" onchange="onDispChange()" style="width:100%;padding:8px;border:1.5px solid var(--gray4);border-radius:6px;font-size:12px">'+
+    dispOptions+'</select></div>'+
+    '<div class="fg"><label>Notes</label><textarea id="cd-notes" placeholder="Call notes…" style="min-height:60px"></textarea></div>'+
+    '<div id="cb-fields" style="display:none"><div class="r2">'+
+      '<div class="fg"><label>Callback date</label><input type="date" id="cd-cbdate" value="'+today+'"/></div>'+
+      '<div class="fg"><label>Callback time</label><input type="time" id="cd-cbtime" value="09:00"/></div>'+
+    '</div></div>'+
+    '<div id="appt-fields" style="display:none"><div class="r2">'+
+      '<div class="fg"><label>Appointment date</label><input type="date" id="cd-apdate" value="'+today+'"/></div>'+
+      '<div class="fg"><label>Appointment time</label><input type="time" id="cd-aptime" value="10:00"/></div>'+
+    '</div>'+
+    '<div class="fg"><label>Service type</label><select id="cd-svc">'+
+    '<option>Air Duct Cleaning</option><option>Dryer Vent</option><option>Chimney</option><option>General Contracting</option>'+
+    '</select></div></div>'+
+    '<button class="btn btn-p" style="width:auto;padding:10px 20px;margin-top:4px" '+
+    'data-lid="'+leadId+'" data-aid="'+agentId+'" onclick="saveCall(this.dataset.lid,parseInt(this.dataset.aid))">Save Call</button>'+
+    '<span id="cd-fb"></span>'+
+    '</div>';
+};
+
+// ── LEADGEN TAB CONTENT ──
+function itRenderLeadGen(){
+  var disps = getDispositions();
+  var agentAssignments = JSON.parse(localStorage.getItem('plhr_agent_disp_assignments')||'{}');
+
+  // Gather all call logs with matching lead data
+  var allLogs = D.callogs.slice();
+  var today = new Date().toISOString().split('T')[0];
+  var monthStart = today.slice(0,7)+'-01';
+
+  var h = '<div class="card"><div class="ctitle">&#127919; LeadGen — Lead Intelligence</div>';
+
+  // Tabs
+  h += '<div style="display:flex;gap:0;border-bottom:1px solid var(--gray4);margin-bottom:16px">';
+  h += '<button id="lg-tab-leads" onclick="lgSwitchTab(\'leads\')" style="padding:9px 16px;font-size:11px;font-weight:700;border:none;background:transparent;color:#7dd3fc;border-bottom:2px solid #3b82f6;cursor:pointer;font-family:inherit">&#128203; Leads by Disposition</button>';
+  h += '<button id="lg-tab-disps" onclick="lgSwitchTab(\'disps\')" style="padding:9px 16px;font-size:11px;font-weight:700;border:none;background:transparent;color:#475569;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">&#9881; Manage Dispositions</button>';
+  h += '<button id="lg-tab-assign" onclick="lgSwitchTab(\'assign\')" style="padding:9px 16px;font-size:11px;font-weight:700;border:none;background:transparent;color:#475569;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">&#128101; Agent Assignments</button>';
+  h += '<button id="lg-tab-vici" onclick="lgSwitchTab(\'vici\')" style="padding:9px 16px;font-size:11px;font-weight:700;border:none;background:transparent;color:#475569;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">&#128222; ViciDial Map</button>';
+  h += '</div>';
+
+  h += '<div id="lg-content">';
+  h += lgLeadsView();
+  h += '</div></div>';
+
+  return h;
+}
+
+function lgSwitchTab(tab){
+  var tabs = ['leads','disps','assign','vici'];
+  tabs.forEach(function(t){
+    var btn = document.getElementById('lg-tab-'+t);
+    if(btn){
+      btn.style.color = t===tab?'#7dd3fc':'#475569';
+      btn.style.borderBottomColor = t===tab?'#3b82f6':'transparent';
+    }
+  });
+  var content = document.getElementById('lg-content');
+  if(!content) return;
+  if(tab==='leads') content.innerHTML = lgLeadsView();
+  else if(tab==='disps') content.innerHTML = lgDispsView();
+  else if(tab==='assign') content.innerHTML = lgAssignView();
+  else if(tab==='vici') content.innerHTML = lgViciView();
+  else if(tab==='crm') content.innerHTML = typeof rAdminCRM==='function'?rAdminCRM():'<div style="padding:20px;color:var(--gray)">CRM not available</div>';
+}
+
+function lgLeadsView(){
+  var disps = getDispositions();
+  var leadGenDisps = disps.filter(function(d){return d.includeLeadGen;});
+  var today = new Date().toISOString().split('T')[0];
+  var monthStart = today.slice(0,7)+'-01';
+
+  var h = '';
+
+  // Filter controls
+  h += '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">';
+  h += '<select id="lg-disp-filter" onchange="lgRefreshLeads()" style="padding:7px 10px;background:var(--bg2);color:var(--navy3);border:1px solid var(--gray4);border-radius:6px;font-size:11px;font-family:inherit">';
+  h += '<option value="">All LeadGen Dispositions</option>';
+  leadGenDisps.forEach(function(d){
+    h += '<option value="'+d.label+'">'+d.label+'</option>';
+  });
+  h += '</select>';
+  h += '<select id="lg-date-filter" onchange="lgRefreshLeads()" style="padding:7px 10px;background:var(--bg2);color:var(--navy3);border:1px solid var(--gray4);border-radius:6px;font-size:11px;font-family:inherit">';
+  h += '<option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="all">All Time</option>';
+  h += '</select>';
+  h += '<button onclick="lgExportCSV()" style="padding:7px 14px;background:#059669;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#128229; Export CSV</button>';
+  h += '<button onclick="lgExportExcel()" style="padding:7px 14px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#128229; Export Excel</button>';
+  h += '</div>';
+
+  h += '<div id="lg-leads-table">';
+  h += lgBuildLeadsTable('', 'today');
+  h += '</div>';
+  return h;
+}
+
+function lgBuildLeadsTable(dispFilter, dateFilter){
+  var disps = getDispositions();
+  var leadGenCodes = disps.filter(function(d){return d.includeLeadGen;}).map(function(d){return d.label;});
+
+  var today = new Date().toISOString().split('T')[0];
+  var weekStart = (function(){var d=new Date();d.setDate(d.getDate()-d.getDay());return d.toISOString().split('T')[0];})();
+  var monthStart = today.slice(0,7)+'-01';
+  var fromDate = dateFilter==='today'?today:dateFilter==='week'?weekStart:dateFilter==='month'?monthStart:'2000-01-01';
+
+  var logs = D.callogs.filter(function(c){
+    var inDate = c.date >= fromDate && c.date <= today;
+    var inLeadGen = leadGenCodes.includes(c.disposition);
+    var inFilter = !dispFilter || c.disposition===dispFilter;
+    return inDate && inLeadGen && inFilter;
+  });
+
+  // Deduplicate by leadId - keep most recent
+  var seen = {};
+  var unique = [];
+  logs.slice().reverse().forEach(function(c){
+    if(!seen[c.leadId]){seen[c.leadId]=true;unique.push(c);}
+  });
+
+  if(!unique.length){
+    return '<div style="text-align:center;padding:30px;color:var(--gray);font-size:11px">No leads found for selected filters.</div>';
+  }
+
+  var h = '<div style="font-size:10px;color:var(--gray);margin-bottom:8px">'+unique.length+' leads found</div>';
+  h += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">';
+  h += '<thead><tr style="background:var(--bg2);border-bottom:1px solid var(--gray4)">';
+  ['Name','Phone','Address','City','State','Disposition','Agent','Date','Notes'].forEach(function(col){
+    h += '<th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase;white-space:nowrap">'+col+'</th>';
+  });
+  h += '<th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase">Status</th>';
+  h += '</tr></thead><tbody>';
+
+  unique.forEach(function(c,i){
+    var lead = D.leads.find(function(l){return l.id===c.leadId;})||{};
+    var agent = D.agents.find(function(a){return a.id===c.agentId;})||{};
+    var disp = getDispositions().find(function(d){return d.label===c.disposition;})||{color:'#64748b'};
+    var bg = i%2===0?'background:var(--bg2)':'';
+    h += '<tr style="border-bottom:1px solid var(--gray4);'+bg+'">';
+    h += '<td style="padding:8px 10px;font-weight:600;color:var(--navy3);white-space:nowrap">'+(lead.name||c.leadName||'—')+'</td>';
+    h += '<td style="padding:8px 10px;font-family:monospace;color:var(--gray)">'+(lead.phone||'—')+'</td>';
+    h += '<td style="padding:8px 10px;color:var(--gray)">'+(lead.address||'—')+'</td>';
+    h += '<td style="padding:8px 10px;color:var(--gray)">'+(lead.city||'—')+'</td>';
+    h += '<td style="padding:8px 10px;color:var(--gray)">'+(lead.state||'—')+'</td>';
+    h += '<td style="padding:8px 10px"><span style="color:'+(disp.color||'#64748b')+';font-weight:700">'+c.disposition+'</span></td>';
+    h += '<td style="padding:8px 10px;color:var(--gray);white-space:nowrap">'+(agent.name||'—')+'</td>';
+    h += '<td style="padding:8px 10px;font-family:monospace;color:var(--gray);white-space:nowrap">'+c.date+' '+c.time+'</td>';
+    h += '<td style="padding:8px 10px;color:var(--gray);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.notes||'—')+'</td>';
+    h += '<td style="padding:8px 10px"><span style="background:'+( disp.color||'#475569')+'22;color:'+(disp.color||'#475569')+';border:1px solid '+(disp.color||'#475569')+';font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px">LeadGen</span></td>';
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+  return h;
+}
+
+function lgRefreshLeads(){
+  var df = document.getElementById('lg-disp-filter');
+  var dtf = document.getElementById('lg-date-filter');
+  var table = document.getElementById('lg-leads-table');
+  if(table) table.innerHTML = lgBuildLeadsTable(df?df.value:'', dtf?dtf.value:'today');
+}
+
+function lgExportCSV(){
+  var df = document.getElementById('lg-disp-filter');
+  var dtf = document.getElementById('lg-date-filter');
+  var disps = getDispositions();
+  var leadGenCodes = disps.filter(function(d){return d.includeLeadGen;}).map(function(d){return d.label;});
+  var today = new Date().toISOString().split('T')[0];
+  var weekStart = (function(){var d=new Date();d.setDate(d.getDate()-d.getDay());return d.toISOString().split('T')[0];})();
+  var monthStart = today.slice(0,7)+'-01';
+  var dateFilter = dtf?dtf.value:'today';
+  var fromDate = dateFilter==='today'?today:dateFilter==='week'?weekStart:dateFilter==='month'?monthStart:'2000-01-01';
+  var dispFilter = df?df.value:'';
+
+  var logs = D.callogs.filter(function(c){
+    return c.date>=fromDate && c.date<=today &&
+      leadGenCodes.includes(c.disposition) &&
+      (!dispFilter||c.disposition===dispFilter);
+  });
+
+  var seen = {};
+  var rows = [];
+  logs.slice().reverse().forEach(function(c){
+    if(!seen[c.leadId]){
+      seen[c.leadId]=true;
+      var lead = D.leads.find(function(l){return l.id===c.leadId;})||{};
+      var agent = D.agents.find(function(a){return a.id===c.agentId;})||{};
+      rows.push([
+        lead.name||c.leadName||'',
+        lead.phone||'',
+        lead.address||'',
+        lead.city||'',
+        lead.state||'',
+        lead.zip||'',
+        c.disposition,
+        agent.name||'',
+        c.date,
+        c.time,
+        (c.notes||'').replace(/,/g,';')
+      ]);
+    }
+  });
+
+  var csv = 'Name,Phone,Address,City,State,ZIP,Disposition,Agent,Date,Time,Notes\n';
+  csv += rows.map(function(r){return r.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+
+  var blob = new Blob([csv],{type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href=url;a.download='ProLink_LeadGen_'+today+'.csv';
+  a.click();URL.revokeObjectURL(url);
+  aud('IT exported LeadGen CSV');
+}
+
+function lgExportExcel(){
+  // Export as CSV with .csv extension (compatible with Excel)
+  lgExportCSV();
+}
+
+function lgDispsView(){
+  var disps = getDispositions();
+  var h = '<div>';
+  h += '<div style="font-size:11px;color:var(--gray);margin-bottom:12px">Manage call dispositions. Toggle \'LeadGen\' to include leads with that disposition in the LeadGen tab. ViciDial code must match your ViciDial server exactly.</div>';
+
+  h += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px">';
+  h += '<thead><tr style="background:var(--bg2);border-bottom:1px solid var(--gray4)"><th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase">Label</th><th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase">Code</th><th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase">ViciDial</th><th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase">LeadGen?</th><th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase">Color</th><th style="padding:8px 10px;text-align:center;font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase">Actions</th></tr></thead><tbody>';
+
+  disps.forEach(function(d,i){
+    h += '<tr style="border-bottom:1px solid var(--gray4)" id="disp-row-'+i+'">';
+    h += '<td style="padding:8px 10px"><input value="'+d.label+'" data-idx="'+i+'" data-field="label" onchange="lgUpdateDisp(this)" style="width:130px;padding:5px;background:var(--bg3);color:var(--navy3);border:1px solid var(--gray4);border-radius:4px;font-size:11px;font-family:inherit"/></td>';
+    h += '<td style="padding:8px 10px"><input value="'+d.code+'" data-idx="'+i+'" data-field="code" onchange="lgUpdateDisp(this)" style="width:70px;padding:5px;background:var(--bg3);color:var(--navy3);border:1px solid var(--gray4);border-radius:4px;font-size:11px;font-family:inherit;font-family:monospace"/></td>';
+    h += '<td style="padding:8px 10px"><input value="'+d.vici+'" data-idx="'+i+'" data-field="vici" onchange="lgUpdateDisp(this)" style="width:70px;padding:5px;background:var(--bg3);color:var(--navy3);border:1px solid var(--gray4);border-radius:4px;font-size:11px;font-family:monospace" placeholder="e.g. NA"/></td>';
+    h += '<td style="padding:8px 10px;text-align:center"><input type="checkbox" data-idx="'+i+'" data-field="includeLeadGen" onchange="lgUpdateDisp(this)" '+(d.includeLeadGen?'checked':'')+' style="width:16px;height:16px;cursor:pointer"/></td>';
+    h += '<td style="padding:8px 10px"><input type="color" value="'+d.color+'" data-idx="'+i+'" data-field="color" onchange="lgUpdateDisp(this)" style="width:40px;height:28px;padding:2px;border:1px solid var(--gray4);border-radius:4px;cursor:pointer;background:transparent"/></td>';
+    h += '<td style="padding:8px 10px;text-align:center"><button data-idx="'+i+'" onclick="lgDeleteDisp(parseInt(this.dataset.idx))" style="padding:4px 10px;background:#1c0a0a;color:#f87171;border:1px solid #dc2626;border-radius:5px;font-size:10px;cursor:pointer;font-family:inherit">Remove</button></td>';
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+
+  // Add new disposition
+  h += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:flex-end">';
+  h += '<div><label style="font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px">Label</label><input id="lg-new-label" placeholder="e.g. Hung Up" style="padding:7px;background:var(--bg2);color:var(--navy3);border:1px solid var(--gray4);border-radius:5px;font-size:11px;font-family:inherit;width:120px"/></div>';
+  h += '<div><label style="font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px">Code</label><input id="lg-new-code" placeholder="HU" style="padding:7px;background:var(--bg2);color:var(--navy3);border:1px solid var(--gray4);border-radius:5px;font-size:11px;font-family:monospace;width:70px"/></div>';
+  h += '<div><label style="font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px">ViciDial Code</label><input id="lg-new-vici" placeholder="HU" style="padding:7px;background:var(--bg2);color:var(--navy3);border:1px solid var(--gray4);border-radius:5px;font-size:11px;font-family:monospace;width:70px"/></div>';
+  h += '<div style="display:flex;align-items:center;gap:6px;padding-bottom:2px"><input type="checkbox" id="lg-new-leadgen" style="width:14px;height:14px"/> <label style="font-size:10px;color:var(--gray)">LeadGen?</label></div>';
+  h += '<button onclick="lgAddDisp()" style="padding:7px 14px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">+ Add</button>';
+  h += '</div>';
+  h += '<div id="lg-disp-fb" style="font-size:10px;margin-top:5px"></div>';
+  h += '</div>';
+  return h;
+}
+
+function lgUpdateDisp(el){
+  var disps = getDispositions();
+  var idx = parseInt(el.dataset.idx);
+  var field = el.dataset.field;
+  if(field==='includeLeadGen') disps[idx][field] = el.checked;
+  else disps[idx][field] = el.value;
+  saveDispositions(disps);
+}
+
+function lgDeleteDisp(idx){
+  var disps = getDispositions();
+  if(!confirm('Remove "'+disps[idx].label+'" disposition?')) return;
+  disps.splice(idx,1);
+  saveDispositions(disps);
+  lgSwitchTab('disps');
+}
+
+function lgAddDisp(){
+  var label = document.getElementById('lg-new-label');
+  var code = document.getElementById('lg-new-code');
+  var vici = document.getElementById('lg-new-vici');
+  var lg = document.getElementById('lg-new-leadgen');
+  var fb = document.getElementById('lg-disp-fb');
+  if(!label||!label.value.trim()){if(fb){fb.textContent='Enter a label.';fb.style.color='#f87171';}return;}
+  var disps = getDispositions();
+  disps.push({
+    code:(code?code.value.trim():label.value.trim().substring(0,4).toUpperCase()),
+    label:label.value.trim(),
+    color:'#64748b',
+    vici:(vici?vici.value.trim():label.value.trim().substring(0,4).toUpperCase()),
+    includeLeadGen:lg?lg.checked:false
+  });
+  saveDispositions(disps);
+  if(fb){fb.textContent='Added!';fb.style.color='#34d399';}
+  lgSwitchTab('disps');
+}
+
+function lgAssignView(){
+  var agents = D.agents.filter(function(a){return a.dept==='Agent';});
+  var disps = getDispositions();
+  var assignments = JSON.parse(localStorage.getItem('plhr_agent_disp_assignments')||'{}');
+
+  var h = '<div>';
+  h += '<div style="font-size:11px;color:var(--gray);margin-bottom:12px">Assign which dispositions each agent can use. Unassigned agents see all dispositions.</div>';
+
+  if(!agents.length){
+    h += '<div style="text-align:center;padding:20px;color:var(--gray);font-size:11px">No agents found. Add agents via System Management → Agents.</div>';
+  } else {
+    agents.forEach(function(a){
+      var assigned = assignments[a.id] || disps.map(function(d){return d.label;});
+      h += '<div style="background:var(--bg2);border:1px solid var(--gray4);border-radius:8px;padding:12px;margin-bottom:10px">';
+      h += '<div style="font-size:12px;font-weight:700;color:var(--navy3);margin-bottom:8px">'+a.name+'</div>';
+      h += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+      disps.forEach(function(d){
+        var checked = assigned.includes(d.label);
+        h += '<label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:'+(checked?d.color+'22':'var(--bg3)')+';border:1px solid '+(checked?d.color:'var(--gray4)')+';border-radius:6px;cursor:pointer;font-size:10px;color:'+(checked?d.color:'var(--gray)')+'">';
+        h += '<input type="checkbox" data-aid="'+a.id+'" data-disp="'+d.label+'" onchange="lgToggleAgentDisp(this)" '+(checked?'checked':'')+' style="cursor:pointer"/>';
+        h += d.label+'</label>';
+      });
+      h += '</div></div>';
+    });
+  }
+  h += '</div>';
+  return h;
+}
+
+function lgToggleAgentDisp(el){
+  var aid = parseInt(el.dataset.aid);
+  var disp = el.dataset.disp;
+  var assignments = JSON.parse(localStorage.getItem('plhr_agent_disp_assignments')||'{}');
+  var disps = getDispositions();
+  if(!assignments[aid]) assignments[aid] = disps.map(function(d){return d.label;});
+  if(el.checked){
+    if(!assignments[aid].includes(disp)) assignments[aid].push(disp);
+  } else {
+    assignments[aid] = assignments[aid].filter(function(d){return d!==disp;});
+  }
+  localStorage.setItem('plhr_agent_disp_assignments', JSON.stringify(assignments));
+}
+
+function lgViciView(){
+  var disps = getDispositions();
+  var h = '<div>';
+  h += '<div style="background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;padding:14px;margin-bottom:16px">';
+  h += '<div style="font-size:12px;font-weight:700;color:#7dd3fc;margin-bottom:8px">&#128222; ViciDial Integration Map</div>';
+  h += '<div style="font-size:11px;color:var(--gray);margin-bottom:10px">These disposition codes must match your ViciDial server statuses exactly. In ViciDial Admin → Call Statuses, make sure each code exists.</div>';
+  h += '<div style="background:#060f1e;border:1px solid #1e3a5f;border-radius:6px;padding:10px;font-family:monospace;font-size:10px;color:#34d399;margin-bottom:10px">';
+  h += 'ViciDial Server: <span style="color:#fbbf24">192.168.1.86</span><br>';
+  h += 'Integration: Phase 3 — Real-time sync coming<br>';
+  h += 'Current: Manual export/import via CSV</div>';
+  h += '</div>';
+
+  h += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px">';
+  h += '<thead><tr style="background:var(--bg2);border-bottom:1px solid var(--gray4)"><th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase">Prolink Label</th><th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase">ViciDial Code</th><th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase">LeadGen?</th><th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase">Status</th></tr></thead><tbody>';
+  disps.forEach(function(d){
+    h += '<tr style="border-bottom:1px solid var(--gray4)">';
+    h += '<td style="padding:8px 10px"><span style="color:'+d.color+';font-weight:700">'+d.label+'</span></td>';
+    h += '<td style="padding:8px 10px;font-family:monospace;color:#7dd3fc">'+d.vici+'</td>';
+    h += '<td style="padding:8px 10px">'+(d.includeLeadGen?'<span style="color:#34d399">&#10003; Yes</span>':'<span style="color:#374151">No</span>')+'</td>';
+    h += '<td style="padding:8px 10px"><span style="color:#fbbf24;font-size:10px">&#9679; Manual (Phase 3: Auto-sync)</span></td>';
+    h += '</tr>';
+  });
+  h += '</tbody></table>';
+
+  h += '<div style="margin-top:16px;padding:12px;background:var(--bg2);border:1px solid var(--gray4);border-radius:8px">';
+  h += '<div style="font-size:11px;font-weight:700;color:var(--navy3);margin-bottom:8px">&#128229; Export for ViciDial Upload</div>';
+  h += '<div style="font-size:10px;color:var(--gray);margin-bottom:8px">Download a CSV of LeadGen leads to upload into ViciDial as a new list.</div>';
+  h += '<button onclick="lgExportCSV()" style="padding:7px 14px;background:#059669;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">&#128229; Export LeadGen CSV for ViciDial</button>';
+  h += '</div>';
+  h += '</div>';
+  return h;
+}
+
+// ── Update itManageTab to include LeadGen ──
+var _origItManageTabLG = itManageTab;
+itManageTab = function(btn, tab){
+  if(tab==='leadgen'){
+    document.querySelectorAll('[data-itab]').forEach(function(b){
+      b.style.color='#475569';b.style.borderBottomColor='transparent';b.style.background='transparent';
+    });
+    if(btn){btn.style.color='#7dd3fc';btn.style.borderBottomColor='#3b82f6';btn.style.background='#0a1628';}
+    var el=document.getElementById('it-manage-content');
+    if(el) el.innerHTML=itRenderLeadGen();
+    return;
+  }
+  _origItManageTabLG(btn, tab);
+};
+
+// ── Update itOpenManage to include LeadGen tab and reorder ──
+var _origItOpenManageLG = itOpenManage;
+itOpenManage = function(){
+  var overlay=document.getElementById('it-manage-overlay');
+  if(!overlay){
+    overlay=document.createElement('div');
+    overlay.id='it-manage-overlay';
+    overlay.style.cssText='position:fixed;inset:0;background:#0b1929;z-index:1500;display:flex;flex-direction:column;overflow:hidden';
+    document.body.appendChild(overlay);
+  }
+  var itTabs=[
+    {id:'agents',  label:'&#128101; Agents'},
+    {id:'leadgen', label:'&#127919; LeadGen'},
+    {id:'records', label:'&#127908; Recordings'},
+    {id:'tickets', label:'&#127914; Tickets'},
+    {id:'settings',label:'&#9881; Settings'},
+  ];
+  var tabBar='<div style="display:flex;align-items:center;background:#060f1e;border-bottom:2px solid #1e3a5f;flex-shrink:0;overflow-x:auto">';
+  tabBar+='<button onclick="itCloseManage()" style="padding:12px 16px;background:#1c0a0a;color:#f87171;border:none;cursor:pointer;font-family:inherit;font-size:18px;flex-shrink:0;border-right:1px solid #1e3a5f">&#10005;</button>';
+  tabBar+='<div style="font-size:12px;font-weight:800;color:#7dd3fc;padding:0 16px;flex-shrink:0;white-space:nowrap">&#9881;&#65039; System Management</div>';
+  itTabs.forEach(function(t){
+    tabBar+='<button data-itab="'+t.id+'" onclick="itManageTab(this,this.dataset.itab)" style="padding:11px 14px;font-size:10px;font-weight:700;border:none;background:transparent;color:#475569;cursor:pointer;font-family:inherit;white-space:nowrap;border-bottom:2px solid transparent;flex-shrink:0">'+t.label+'</button>';
+  });
+  tabBar+='</div>';
+  overlay.innerHTML=tabBar+'<div id="it-manage-content" style="flex:1;overflow-y:auto;padding:16px"><div style="text-align:center;padding:40px;color:#475569;font-size:12px">&#128073; Select a tab above to manage</div></div>';
+};
+
+function itNavDept(dept){
+  IT_CURRENT_DEPT = dept;
+  var target = document.getElementById('dept-body') || document.querySelector('.ws-crm');
+  if(target){
+    target.style.padding = '0';
+    target.style.overflow = 'auto';
+    target.innerHTML = buildITDash();
+  }
+}
 </script>
 
 <!-- ════ WORKSTATION SCREEN ════ -->
