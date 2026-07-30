@@ -2072,11 +2072,15 @@ function updDB(){var el=document.getElementById('dbadge');if(!el)return;var n=D.
 // ── SHIFT ──
 function stShift(){
   ST.clockIn=new Date();ST.breaks=[];ST.curBk=null;ST.otMode=null;ST.otEnd=null;
-  var isIT = ST.agent && ST.agent.dept==='IT';
+  var isIT=ST.agent&&ST.agent.dept==='IT';
+
+  // Update header elements (safely)
   var shav=document.getElementById('shav');if(shav)shav.textContent=ini(ST.agent.name);
   var shn=document.getElementById('shn');if(shn)shn.textContent=ST.agent.name;
   var shd=document.getElementById('shd');if(shd)shd.textContent=ST.agent.dept;
   var tcs=document.getElementById('tcs');if(tcs)tcs.textContent='Started at '+nowt();
+
+  // Reset break buttons (agent/TL only)
   if(!isIT){
     ['first','bio','lunch','last'].forEach(function(t){
       var b=document.getElementById('bb-'+t);
@@ -2086,6 +2090,15 @@ function stShift(){
     var bkl=document.getElementById('bklog');if(bkl)bkl.style.display='none';
     var bkr=document.getElementById('bklrows');if(bkr)bkr.innerHTML='';
   }
+
+  // Reset dialer state
+  var dialBtn=document.getElementById('btn-dial');if(dialBtn)dialBtn.style.display='';
+  var hangBtn=document.getElementById('btn-hangup');if(hangBtn)hangBtn.style.display='none';
+  var calBar=document.getElementById('cal-bar');if(calBar)calBar.classList.remove('show');
+  if(typeof callTimerI!=='undefined'&&callTimerI){clearInterval(callTimerI);callTimerI=null;}
+  if(typeof callStartTime!=='undefined')callStartTime=null;
+  var dialNum=document.getElementById('dial-num');if(dialNum)dialNum.value='';
+
   setSt('du');clPop();ss('s-ws');
   if(tickI)clearInterval(tickI);tickI=setInterval(tick,1000);
   setTimeout(goWorkstation,80);
@@ -5192,17 +5205,7 @@ doCILogin=function(){
   _origDoCILogin();
 };
 
-// Attach campaign to agent session after login
-var _origStShift=stShift;
-stShift=function(){
-  if(window._loginCampaign&&ST.agent){
-    ST.campaign=window._loginCampaign;
-    ST.agent.currentCampaign=window._loginCampaign;
-  }
-  _origStShift();
-};
-
-// Render campaign list when admin settings tab opens
+// Attach campaign to agent session after login// Render campaign list when admin settings tab opens
 var _origAT2=aT;
 aT=function(t){
   _origAT2(t);
@@ -8171,26 +8174,7 @@ function adminMonitorAgent(agentId){
 // ══ IT SYSTEM MANAGEMENT PANEL ══
 
 // ══ FIX BREAK BLEED BETWEEN SESSIONS ══
-// Reset ALL break/dialer DOM state on new login
-var _origStShiftBreak=stShift;
-stShift=function(){
-  // Reset dialer state
-  var dialBtn=document.getElementById('btn-dial');
-  var hangBtn=document.getElementById('btn-hangup');
-  var calBar=document.getElementById('cal-bar');
-  if(dialBtn)dialBtn.style.display='';
-  if(hangBtn)hangBtn.style.display='none';
-  if(calBar)calBar.classList.remove('show');
-  // Reset call timer
-  if(typeof callTimerI!=='undefined'&&callTimerI){clearInterval(callTimerI);callTimerI=null;}
-  callStartTime=null;
-  // Reset dialer number
-  var dialNum=document.getElementById('dial-num');
-  if(dialNum)dialNum.value='';
-  _origStShiftBreak();
-};
-
-// ══════════════════════════════════════════
+// Reset ALL break/dialer DOM state on new login// ══════════════════════════════════════════
 // PROLINK BPO — IT DEPARTMENT CODE
 // Extract from prolink.html
 // ══════════════════════════════════════════
