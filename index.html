@@ -2346,6 +2346,7 @@ function rAL(){if(!D.agents.length)return'<div class="empty">No staff yet.</div>
 function doAA(){var n=document.getElementById('an').value.trim(),eid=document.getElementById('aeid').value.trim(),dept=document.getElementById('adept').value,sh=document.getElementById('ash').value,she=document.getElementById('ashe').value,r=parseFloat(document.getElementById('ar').value),pw=document.getElementById('apw').value,hi=document.getElementById('ahi').value,sl=parseInt(document.getElementById('asl').value)||5,vl=parseInt(document.getElementById('avl').value)||5,el=parseInt(document.getElementById('ael').value)||3;if(!n){sfb('afb','Name required.',false);return;}if(!r||r<=0){sfb('afb','Rate required.',false);return;}if(!pw){sfb('afb','Password required.',false);return;}D.agents.push({id:Date.now(),name:n,eid,dept,shift:sh,shiftEnd:she||CFG.shiftEnd,rate:r,password:pw,hired:hi,slBalance:sl,vlBalance:vl,elBalance:el});sd();aud('Added: '+n);sfb('afb',n+' added!',true);aT('agents');updAH();}
 function doSEA(id){var a=D.agents.find(function(x){return x.id===id;});if(!a)return;a.name=document.getElementById('en').value.trim()||a.name;a.eid=document.getElementById('eeid').value.trim();a.dept=document.getElementById('edept').value;a.shift=document.getElementById('esh').value;a.shiftEnd=document.getElementById('eshe').value||CFG.shiftEnd;a.rate=parseFloat(document.getElementById('er').value)||a.rate;var pw=document.getElementById('epw').value;if(pw)a.password=pw;a.hired=document.getElementById('ehi').value;a.slBalance=parseInt(document.getElementById('esl').value)||5;a.vlBalance=parseInt(document.getElementById('evl').value)||5;a.elBalance=parseInt(document.getElementById('eel').value)||3;sd();aud('Edited: '+a.name);sfb('eafb','Saved!',true);setTimeout(function(){document.getElementById('aedit').innerHTML='';document.getElementById('alist').innerHTML=rAL();},700);}
 function doDA(id){
+  id=parseInt(id);
   var a=D.agents.find(function(x){return x.id===id;});
   if(!a||!confirm('Delete '+a.name+'?'))return;
   D.agents=D.agents.filter(function(x){return x.id!==id;});
@@ -7760,6 +7761,7 @@ aT = function(tab){
 
 
 function doEA(id){
+  id=parseInt(id);
   var a=D.agents.find(function(x){return x.id===id;});
   if(!a)return;
   var depts=['Agent','Team Leader','Manager','HR','IT','Operations','QA','Finance','Admin'];
@@ -7791,6 +7793,16 @@ function doEA(id){
 }
 
 var IT_CURRENT_DEPT=null;
+
+function itNavDept(dept){
+  IT_CURRENT_DEPT = dept;
+  var target = document.getElementById('dept-body') || document.querySelector('.ws-crm');
+  if(target){
+    target.style.padding = '0';
+    target.style.overflow = 'auto';
+    target.innerHTML = buildITDash();
+  }
+}
 var IT_DEPT_CFG=[
   {name:'Agent',icon:'&#127911;',color:'#1d4ed8',desc:'Call agents & CRM'},
   {name:'Team Leader',icon:'&#128081;',color:'#7c3aed',desc:'Team monitoring'},
@@ -8917,6 +8929,7 @@ function itRenderLeadGen(){
   h += '<button id="lg-tab-disps" onclick="lgSwitchTab(\'disps\')" style="padding:9px 16px;font-size:11px;font-weight:700;border:none;background:transparent;color:#475569;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">&#9881; Manage Dispositions</button>';
   h += '<button id="lg-tab-assign" onclick="lgSwitchTab(\'assign\')" style="padding:9px 16px;font-size:11px;font-weight:700;border:none;background:transparent;color:#475569;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">&#128101; Agent Assignments</button>';
   h += '<button id="lg-tab-vici" onclick="lgSwitchTab(\'vici\')" style="padding:9px 16px;font-size:11px;font-weight:700;border:none;background:transparent;color:#475569;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">&#128222; ViciDial Map</button>';
+  h += '<button id="lg-tab-crm" onclick="lgSwitchTab(\'crm\')" style="padding:9px 16px;font-size:11px;font-weight:700;border:none;background:transparent;color:#475569;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">&#127922; CRM Upload</button>';
   h += '</div>';
 
   h += '<div id="lg-content">';
@@ -8927,7 +8940,7 @@ function itRenderLeadGen(){
 }
 
 function lgSwitchTab(tab){
-  var tabs = ['leads','disps','assign','vici'];
+  var tabs = ['leads','disps','assign','vici','crm'];
   tabs.forEach(function(t){
     var btn = document.getElementById('lg-tab-'+t);
     if(btn){
@@ -9282,16 +9295,6 @@ itOpenManage = function(){
   tabBar+='</div>';
   overlay.innerHTML=tabBar+'<div id="it-manage-content" style="flex:1;overflow-y:auto;padding:16px"><div style="text-align:center;padding:40px;color:#475569;font-size:12px">&#128073; Select a tab above to manage</div></div>';
 };
-
-function itNavDept(dept){
-  IT_CURRENT_DEPT = dept;
-  var target = document.getElementById('dept-body') || document.querySelector('.ws-crm');
-  if(target){
-    target.style.padding = '0';
-    target.style.overflow = 'auto';
-    target.innerHTML = buildITDash();
-  }
-}
 </script>
 
 <!-- ════ WORKSTATION SCREEN ════ -->
